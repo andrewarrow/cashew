@@ -1,9 +1,9 @@
 import SwiftUI
 
-// Custom calendar data alert view for in-app notifications
-struct CalendarDataAlertView: View {
+// Custom finance data alert view for in-app notifications
+struct FinanceDataAlertView: View {
     @Binding var isShowing: Bool
-    let calendarData: CalendarData
+    let financeData: FinanceData
     let changeDescriptions: [String]
     var onDismiss: () -> Void
     @Environment(\.colorScheme) var colorScheme
@@ -24,11 +24,11 @@ struct CalendarDataAlertView: View {
             VStack(spacing: 16) {
                 // Header
                 HStack {
-                    Image(systemName: "calendar")
+                    Image(systemName: "dollarsign.circle")
                         .font(.system(size: 24))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.green)
                     
-                    Text("Calendar Data Received")
+                    Text("Finance Data Received")
                         .font(.headline)
                     
                     Spacer()
@@ -47,9 +47,9 @@ struct CalendarDataAlertView: View {
                 
                 Divider()
                 
-                // Calendar data content
+                // Finance data content
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("From: \(calendarData.senderName)")
+                    Text("From: \(financeData.senderName)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -65,7 +65,7 @@ struct CalendarDataAlertView: View {
                                     HStack(alignment: .top, spacing: 8) {
                                         Image(systemName: "arrow.right")
                                             .font(.system(size: 12))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(.green)
                                             .frame(width: 12, height: 12)
                                             .padding(.top, 4)
                                         
@@ -82,7 +82,7 @@ struct CalendarDataAlertView: View {
                         }
                         .frame(maxHeight: 200) // Limit the height of the scroll view
                     } else {
-                        Text("Received calendar with \(calendarData.entries.count) entries")
+                        Text("Received transactions with \(financeData.transactions.count) entries")
                             .font(.body)
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -117,11 +117,11 @@ struct CalendarDataAlertView: View {
                             onDismiss()
                         }
                     }) {
-                        Text("View Calendar")
+                        Text("View Transactions")
                             .fontWeight(.medium)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(Color.blue)
+                            .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(8)
                     }
@@ -144,7 +144,7 @@ struct BluetoothDeviceListView: View {
     @State private var showDebugAlert = false
     // Add a local state mirror of the BluetoothManager alert state
     @State private var localShowAlert = false
-    @State private var localAlertData: CalendarData?
+    @State private var localAlertData: FinanceData?
     @State private var localChangeDescriptions: [String] = []
     
     var body: some View {
@@ -220,20 +220,20 @@ struct BluetoothDeviceListView: View {
                     BluetoothFooter()
                 }
                 
-                // In-app Calendar Data Alert - Use local state to ensure it's displayed
+                // In-app Finance Data Alert - Use local state to ensure it's displayed
                 if localShowAlert, let alertData = localAlertData {
-                    CalendarDataAlertView(
+                    FinanceDataAlertView(
                         isShowing: $localShowAlert,
-                        calendarData: alertData,
+                        financeData: alertData,
                         changeDescriptions: localChangeDescriptions,
                         onDismiss: {
                             // Reset both local and manager state
                             localShowAlert = false
-                            bluetoothManager.showCalendarDataAlert = false
+                            bluetoothManager.showFinanceDataAlert = false
                         }
                     )
                     .onAppear {
-                        print("📢 ALERT APPEARED: showing calendar data from \(alertData.senderName)")
+                        print("📢 ALERT APPEARED: showing finance data from \(alertData.senderName)")
                         print("📢 Change descriptions: \(localChangeDescriptions.count)")
                     }
                 }
@@ -244,11 +244,11 @@ struct BluetoothDeviceListView: View {
         .accentColor(Color.blue)
         // Monitor the bluetoothManager for alert changes
         // This ensures we catch all alerts and display them
-        .onReceive(bluetoothManager.$showCalendarDataAlert) { showAlert in
-            if showAlert, let alertData = bluetoothManager.alertCalendarData {
+        .onReceive(bluetoothManager.$showFinanceDataAlert) { showAlert in
+            if showAlert, let alertData = bluetoothManager.alertFinanceData {
                 // Sync the local state with the bluetoothManager state
                 self.localAlertData = alertData
-                self.localChangeDescriptions = bluetoothManager.calendarChangeDescriptions
+                self.localChangeDescriptions = bluetoothManager.financeChangeDescriptions
                 self.localShowAlert = true
                 print("⚡️ ALERT STATE RECEIVED FROM MANAGER: \(alertData.senderName)")
             }
@@ -280,13 +280,13 @@ struct BluetoothDeviceListView: View {
     
     // Check for a pending alert that might not have been shown
     func checkPendingAlert() {
-        if bluetoothManager.showCalendarDataAlert, 
-           let alertData = bluetoothManager.alertCalendarData,
+        if bluetoothManager.showFinanceDataAlert, 
+           let alertData = bluetoothManager.alertFinanceData,
            !localShowAlert {
             
             print("🚨 FOUND PENDING ALERT that wasn't displayed - showing it now")
             localAlertData = alertData
-            localChangeDescriptions = bluetoothManager.calendarChangeDescriptions
+            localChangeDescriptions = bluetoothManager.financeChangeDescriptions
             localShowAlert = true
         }
     }
@@ -501,7 +501,7 @@ struct BluetoothFooter: View {
     }
 }
 
-// Calendar History View for displaying past changes
+// Transaction History View for displaying past changes
 struct HistoryView: View {
     @EnvironmentObject var bluetoothManager: BluetoothManager
     @Environment(\.presentationMode) var presentationMode
@@ -527,7 +527,7 @@ struct HistoryView: View {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 12))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.green)
                                 .frame(width: 12, height: 12)
                                 .padding(.top, 4)
                             
@@ -552,7 +552,7 @@ struct HistoryView: View {
                             Text("No History Yet")
                                 .font(.headline)
                             
-                            Text("Calendar changes will appear here")
+                            Text("Transaction changes will appear here")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -564,7 +564,7 @@ struct HistoryView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
-        .navigationTitle("Calendar History")
+        .navigationTitle("Transaction History")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

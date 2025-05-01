@@ -1,35 +1,35 @@
 import Foundation
 import CoreBluetooth
 
-// Calendar entry for each month with a title, location, and day
-struct CalendarEntry: Identifiable, Codable {
+// Finance transaction entry with amount, description, category, and date
+struct FinanceTransaction: Identifiable, Codable {
     let id: UUID
-    var title: String
-    var location: String
-    var month: Int // 1-12 for the months of the year
-    var day: Int // 1-31 for the day of the month
+    var amount: Double
+    var description: String
+    var category: String
+    var date: Date
     
-    init(title: String = "", location: String = "", month: Int, day: Int = 1) {
+    init(amount: Double = 0.0, description: String = "", category: String = "", date: Date = Date()) {
         self.id = UUID()
-        self.title = title
-        self.location = location
-        self.month = month
-        self.day = day
+        self.amount = amount
+        self.description = description
+        self.category = category
+        self.date = date
     }
 }
 
-// Calendar data model for Bluetooth transmission
-struct CalendarData: Identifiable, Codable {
+// Finance data model for Bluetooth transmission
+struct FinanceData: Identifiable, Codable {
     let id: UUID
     let senderName: String
     let timestamp: Date
-    var entries: [CalendarEntry]
+    var transactions: [FinanceTransaction]
     
-    init(senderName: String, entries: [CalendarEntry], timestamp: Date = Date()) {
+    init(senderName: String, transactions: [FinanceTransaction], timestamp: Date = Date()) {
         self.id = UUID()
         self.senderName = senderName
         self.timestamp = timestamp
-        self.entries = entries
+        self.transactions = transactions
     }
     
     // Convert to Data for Bluetooth transmission
@@ -38,24 +38,24 @@ struct CalendarData: Identifiable, Codable {
         encoder.dateEncodingStrategy = .iso8601
         do {
             let data = try encoder.encode(self)
-            print("Successfully encoded CalendarData to \(data.count) bytes")
+            print("Successfully encoded FinanceData to \(data.count) bytes")
             return data
         } catch {
-            print("Error encoding CalendarData: \(error)")
+            print("Error encoding FinanceData: \(error)")
             return nil
         }
     }
     
     // Convert from Data received over Bluetooth
-    static func fromData(_ data: Data) -> CalendarData? {
+    static func fromData(_ data: Data) -> FinanceData? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         do {
-            let calendarData = try decoder.decode(CalendarData.self, from: data)
-            print("Successfully decoded CalendarData with \(calendarData.entries.count) entries")
-            return calendarData
+            let financeData = try decoder.decode(FinanceData.self, from: data)
+            print("Successfully decoded FinanceData with \(financeData.transactions.count) transactions")
+            return financeData
         } catch {
-            print("Error decoding CalendarData: \(error)")
+            print("Error decoding FinanceData: \(error)")
             return nil
         }
     }
@@ -77,8 +77,8 @@ struct BluetoothDevice: Identifiable {
     var lastUpdated: Date = Date()
     var isSameApp: Bool = false
     
-    // Calendar data received from this device
-    var receivedCalendarData: CalendarData?
+    // Finance data received from this device
+    var receivedFinanceData: FinanceData?
     
     // Getter for the actual current RSSI (for details screen)
     var rssi: Int { 

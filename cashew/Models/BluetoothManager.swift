@@ -11,16 +11,16 @@ enum ScanningState {
     case refreshing // Special state where we're scanning but data shouldn't be displayed yet
 }
 
-// Custom UUIDs for app identification and calendar
+// Custom UUIDs for app identification and finance transactions
 let connectWithAppServiceUUID = CBUUID(string: "6F7A99FE-2F4A-41C0-ADB0-9D8CB68BEBA1")
-let calendarServiceUUID = CBUUID(string: "6F7A99FE-2F4A-41C0-ADB0-9D8CB68BEBA2")
-let calendarCharacteristicUUID = CBUUID(string: "6F7A99FE-2F4A-41C0-ADB0-9D8CB68BEBA3")
+let financeServiceUUID = CBUUID(string: "6F7A99FE-2F4A-41C0-ADB0-9D8CB68BEBA2")
+let financeCharacteristicUUID = CBUUID(string: "6F7A99FE-2F4A-41C0-ADB0-9D8CB68BEBA3")
 
 class BluetoothManager: NSObject, ObservableObject {
     var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
     private var peripheralManager: CBPeripheralManager!
-    private var calendarCharacteristic: CBMutableCharacteristic?
+    private var financeCharacteristic: CBMutableCharacteristic?
     
     // Published properties that trigger UI updates
     @Published var discoveredDevices: [BluetoothDevice] = []
@@ -43,23 +43,24 @@ class BluetoothManager: NSObject, ObservableObject {
         case failed = 7
     }
     
-    // Calendar-related properties
+    // Finance-related properties
+    @Published var sendingFinanceData = false
     @Published var sendingCalendarData = false
     @Published var transferProgress: Double = 0.0 // 0.0 to 1.0
     @Published var transferState: TransferState = .notStarted // Current state in the transfer process
     @Published var transferSuccess: Bool? = nil // nil = not completed, true = success, false = failure
     @Published var transferError: String? = nil // Error message if transfer failed
     @Published var debugMessages: [String] = []
-    @Published var calendarEntries: [CalendarEntry] = []
-    @Published var receivedCalendarData: CalendarData?
+    @Published var financeTransactions: [FinanceTransaction] = []
+    @Published var receivedFinanceData: FinanceData?
     
     // Flag to indicate we're in cleanup mode - prevents timer callbacks from triggering
     private var isCleaningUp: Bool = false
     
-    // Alert system for incoming calendar data
-    @Published var showCalendarDataAlert = false
-    @Published var alertCalendarData: CalendarData?
-    @Published var calendarChangeDescriptions: [String] = []
+    // Alert system for incoming finance data
+    @Published var showFinanceDataAlert = false
+    @Published var alertFinanceData: FinanceData?
+    @Published var financeChangeDescriptions: [String] = []
     
     // History entry model to track changes over time
     struct HistoryEntry: Identifiable, Codable {
@@ -204,11 +205,11 @@ class BluetoothManager: NSObject, ObservableObject {
             UserDefaults.standard.set(self.deviceCustomName, forKey: "DeviceCustomName")
         }
         
-        // Initialize calendar entries (one for each month)
-        self.initializeCalendarEntries()
+        // Initialize finance transactions
+        self.initializeFinanceTransactions()
         
-        // Load saved calendar entries from UserDefaults
-        self.loadCalendarEntries()
+        // Load saved finance transactions from UserDefaults
+        self.loadFinanceTransactions()
         
         // Load saved history entries from UserDefaults
         self.loadHistoryEntries()
@@ -218,35 +219,56 @@ class BluetoothManager: NSObject, ObservableObject {
         // Scanning will automatically start once Bluetooth is powered on
     }
     
-    // Initialize calendar entries for all 12 months
-    private func initializeCalendarEntries() {
-        // Only initialize if we don't have entries yet
-        if self.calendarEntries.isEmpty {
-            for month in 1...12 {
-                let entry = CalendarEntry(month: month)
-                self.calendarEntries.append(entry)
+    // Initialize finance transactions with sample data
+    private func initializeFinanceTransactions() {
+        // Only initialize if we don't have transactions yet
+        if self.financeTransactions.isEmpty {
+            // Add a few sample transactions
+            let currentDate = Date()
+            let calendar = Calendar.current
+            
+            for i in 0..<5 {
+                // Create dates going back a few days
+                let daysAgo = i * 2
+                let transactionDate = calendar.date(byAdding: .day, value: -daysAgo, to: currentDate) ?? currentDate
+                
+                // Create a transaction with some sample data
+                let amount = Double.random(in: 10...200)
+                let categories = ["Food", "Shopping", "Transportation", "Entertainment", "Utilities"]
+                let descriptions = ["Grocery store", "Restaurant", "Gas station", "Online purchase", "Coffee shop"]
+                
+                let transaction = FinanceTransaction(
+                    amount: amount,
+                    description: descriptions[i % descriptions.count],
+                    category: categories[i % categories.count],
+                    date: transactionDate
+                )
+                
+                self.financeTransactions.append(transaction)
             }
-            self.addDebugMessage("Initialized 12 empty calendar entries")
+            self.addDebugMessage("Initialized 5 sample finance transactions")
         }
     }
     
-    // Load saved calendar entries from UserDefaults
-    private func loadCalendarEntries() {
-        if let savedData = UserDefaults.standard.data(forKey: "CalendarEntries") {
+    // Load saved finance transactions from UserDefaults
+    private func loadFinanceTransactions() {
+        if let savedData = UserDefaults.standard.data(forKey: "FinanceTransactions") {
             let decoder = JSONDecoder()
-            if let loadedEntries = try? decoder.decode([CalendarEntry].self, from: savedData) {
-                self.calendarEntries = loadedEntries
-                self.addDebugMessage("Loaded \(loadedEntries.count) calendar entries from UserDefaults")
+            decoder.dateDecodingStrategy = .iso8601
+            if let loadedTransactions = try? decoder.decode([FinanceTransaction].self, from: savedData) {
+                self.financeTransactions = loadedTransactions
+                self.addDebugMessage("Loaded \(loadedTransactions.count) finance transactions from UserDefaults")
             }
         }
     }
     
-    // Save calendar entries to UserDefaults
-    func saveCalendarEntries() {
+    // Save finance transactions to UserDefaults
+    func saveFinanceTransactions() {
         let encoder = JSONEncoder()
-        if let encodedData = try? encoder.encode(self.calendarEntries) {
-            UserDefaults.standard.set(encodedData, forKey: "CalendarEntries")
-            self.addDebugMessage("Saved \(self.calendarEntries.count) calendar entries to UserDefaults")
+        encoder.dateEncodingStrategy = .iso8601
+        if let encodedData = try? encoder.encode(self.financeTransactions) {
+            UserDefaults.standard.set(encodedData, forKey: "FinanceTransactions")
+            self.addDebugMessage("Saved \(self.financeTransactions.count) finance transactions to UserDefaults")
         }
     }
     
@@ -296,57 +318,96 @@ class BluetoothManager: NSObject, ObservableObject {
         self.addDebugMessage("Added history entry with \(changes.count) changes from \(senderName)")
     }
     
-    // Update a calendar entry
-    func updateCalendarEntry(forMonth month: Int, title: String, location: String, day: Int = 1) {
-        if let index = self.calendarEntries.firstIndex(where: { $0.month == month }) {
-            self.calendarEntries[index].title = title
-            self.calendarEntries[index].location = location
-            self.calendarEntries[index].day = day
-            self.addDebugMessage("Updated calendar entry for month \(month), day \(day)")
-            self.saveCalendarEntries()
-        } else {
-            // If entry doesn't exist for this month, create it
-            let newEntry = CalendarEntry(title: title, location: location, month: month, day: day)
-            self.calendarEntries.append(newEntry)
-            self.addDebugMessage("Created new calendar entry for month \(month), day \(day)")
-            self.saveCalendarEntries()
+    // Add a new finance transaction
+    func addFinanceTransaction(amount: Double, description: String, category: String, date: Date = Date()) {
+        let newTransaction = FinanceTransaction(
+            amount: amount,
+            description: description,
+            category: category,
+            date: date
+        )
+        
+        self.financeTransactions.append(newTransaction)
+        self.addDebugMessage("Added new finance transaction: $\(String(format: "%.2f", amount)) for \(description)")
+        self.saveFinanceTransactions()
+    }
+    
+    // Update an existing finance transaction
+    func updateFinanceTransaction(id: UUID, amount: Double? = nil, description: String? = nil, category: String? = nil, date: Date? = nil) {
+        if let index = self.financeTransactions.firstIndex(where: { $0.id == id }) {
+            var updatedTransaction = self.financeTransactions[index]
+            
+            if let amount = amount {
+                updatedTransaction.amount = amount
+            }
+            
+            if let description = description {
+                updatedTransaction.description = description
+            }
+            
+            if let category = category {
+                updatedTransaction.category = category
+            }
+            
+            if let date = date {
+                updatedTransaction.date = date
+            }
+            
+            self.financeTransactions[index] = updatedTransaction
+            self.addDebugMessage("Updated finance transaction with ID: \(id.uuidString)")
+            self.saveFinanceTransactions()
         }
     }
     
-    // Add sample calendar entries
-    func populateSampleCalendarEntries() {
-        // Clear existing entries
-        self.calendarEntries.removeAll()
+    // Add sample finance transactions
+    func populateSampleFinanceTransactions() {
+        // Clear existing transactions
+        self.financeTransactions.removeAll()
         
-        // Add one entry for each month with sample data
-        let events = [
-            "Team Meeting", "Project Deadline", "Conference", "Training Session",
-            "Client Presentation", "Annual Review", "Department Outing", "Budget Planning",
-            "Product Launch", "Quarterly Report", "Holiday Party", "Year End Review"
+        // Sample categories
+        let categories = ["Food", "Shopping", "Transportation", "Entertainment", "Utilities", "Healthcare", "Rent", "Income"]
+        
+        // Sample descriptions
+        let descriptions = [
+            "Grocery store", "Restaurant meal", "Online shopping", "Gas station", 
+            "Movie tickets", "Electric bill", "Water bill", "Doctor visit", 
+            "Monthly rent", "Salary deposit", "Coffee shop", "Electronics store"
         ]
         
-        let locations = [
-            "Conference Room A", "Main Office", "Convention Center", "Training Center",
-            "Client HQ", "Manager's Office", "City Park", "Board Room",
-            "Exhibition Hall", "Presentation Room", "Hotel Ballroom", "Executive Suite"
-        ]
+        // Generate 10 random transactions
+        let currentDate = Date()
+        let calendar = Calendar.current
         
-        for month in 1...12 {
-            // Use a random day between 1 and 28 (to avoid issues with February)
-            let day = Int.random(in: 1...28)
-            let entry = CalendarEntry(
-                title: events[month-1],
-                location: locations[month-1],
-                month: month,
-                day: day
+        for i in 0..<12 {
+            // Create dates going back over the past month
+            let daysAgo = i * 3
+            let transactionDate = calendar.date(byAdding: .day, value: -daysAgo, to: currentDate) ?? currentDate
+            
+            // Randomize whether it's income or expense
+            let isIncome = i % 10 == 0 // Make every 10th transaction income
+            
+            // Create a transaction with random data
+            let amount = isIncome ? 
+                Double.random(in: 500...3000) : // Income
+                Double.random(in: 5...200) * -1 // Expense (negative)
+            
+            let category = isIncome ? "Income" : categories[i % (categories.count - 1)]
+            let description = descriptions[i % descriptions.count]
+            
+            let transaction = FinanceTransaction(
+                amount: amount,
+                description: description,
+                category: category,
+                date: transactionDate
             )
-            self.calendarEntries.append(entry)
-            self.addDebugMessage("Added sample entry for month \(month), day \(day)")
+            
+            self.financeTransactions.append(transaction)
+            self.addDebugMessage("Added sample transaction: \(isIncome ? "Income" : "Expense") of $\(String(format: "%.2f", abs(amount)))")
         }
         
-        // Save the entries
-        self.saveCalendarEntries()
-        self.addDebugMessage("Sample calendar entries populated successfully")
+        // Save the transactions
+        self.saveFinanceTransactions()
+        self.addDebugMessage("Sample finance transactions populated successfully")
     }
     
     // Add debug message to the log - both UI and console
@@ -619,17 +680,17 @@ class BluetoothManager: NSObject, ObservableObject {
         }
     }
     
-    // Send calendar data to a specific device
-    func sendCalendarData(to device: BluetoothDevice) {
-        self.addDebugMessage("Preparing to send calendar data to \(device.name)")
+    // Send finance data to a specific device
+    func sendFinanceData(to device: BluetoothDevice) {
+        self.addDebugMessage("Preparing to send finance data to \(device.name)")
         
         guard let peripheral = device.peripheral else {
-            self.addDebugMessage("Error: Cannot send calendar data - no peripheral")
+            self.addDebugMessage("Error: Cannot send finance data - no peripheral")
             return
         }
         
-        // Create a new calendar data object with all of our entries
-        let calendarData = CalendarData(senderName: self.deviceCustomName, entries: self.calendarEntries)
+        // Create a new finance data object with all of our transactions
+        let financeData = FinanceData(senderName: self.deviceCustomName, transactions: self.financeTransactions)
         
         // Reset transfer state completely
         self.updateOnMainThread {
@@ -637,10 +698,10 @@ class BluetoothManager: NSObject, ObservableObject {
             self.transferState = .notStarted
             self.transferSuccess = nil
             self.transferError = nil
-            self.sendingCalendarData = true
+            self.sendingFinanceData = true
         }
         
-        self.addDebugMessage("Connecting to \(device.name) to send calendar data...")
+        self.addDebugMessage("Connecting to \(device.name) to send finance data...")
         
         // Update to connecting state
         self.updateTransferState(.connecting, progress: 0.1) // 10% - Starting connection
@@ -654,17 +715,17 @@ class BluetoothManager: NSObject, ObservableObject {
                     // Update to discovering services state
                     self.updateTransferState(.discoveringServices, progress: 0.2)
                     
-                    self.discoverServices(peripheral: peripheral, calendarData: calendarData)
+                    self.discoverServices(peripheral: peripheral, financeData: financeData)
                 } else {
                     self.addDebugMessage("Failed to connect to \(device.name)")
                     
                     // Update to failed state
                     self.updateOnMainThread {
                         self.transferState = .failed
-                        self.sendingCalendarData = false
+                        self.sendingFinanceData = false
                         self.transferSuccess = false
-                        self.transferError = "Failed to connect for sending calendar data"
-                        self.error = "Failed to connect for sending calendar data"
+                        self.transferError = "Failed to connect for sending finance data"
+                        self.error = "Failed to connect for sending finance data"
                     }
                 }
             })
@@ -675,16 +736,16 @@ class BluetoothManager: NSObject, ObservableObject {
             // Update to discovering services state
             self.updateTransferState(.discoveringServices, progress: 0.2)
             
-            self.discoverServices(peripheral: peripheral, calendarData: calendarData)
+            self.discoverServices(peripheral: peripheral, financeData: financeData)
         }
     }
     
-    // Discover services after connection for calendar data sending
-    private func discoverServices(peripheral: CBPeripheral, calendarData: CalendarData) {
+    // Discover services after connection for finance data sending
+    private func discoverServices(peripheral: CBPeripheral, financeData: FinanceData) {
         peripheral.delegate = self
         
         self.addDebugMessage("Discovering services for \(peripheral.name ?? "Unknown")")
-        peripheral.discoverServices([calendarServiceUUID])
+        peripheral.discoverServices([financeServiceUUID])
     }
     
     // Track if we've already attempted to write data to prevent duplicate writes
@@ -716,7 +777,7 @@ class BluetoothManager: NSObject, ObservableObject {
             let delay = 3.0 + (Double(chunkIndex) * 1.0) // 3 seconds initial delay, 1 second between chunks
             
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard let self = self, self.sendingCalendarData, !self.isCleaningUp else { return }
+                guard let self = self, self.sendingFinanceData, !self.isCleaningUp else { return }
                 
                 // Calculate the current chunk's data
                 let startIndex = chunkIndex * chunkSize
@@ -739,13 +800,13 @@ class BluetoothManager: NSObject, ObservableObject {
                 if chunkIndex == totalChunks - 1 {
                     // Increase from 3.0 to 5.0 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                        guard let self = self, self.sendingCalendarData, !self.isCleaningUp else { return }
+                        guard let self = self, self.sendingFinanceData, !self.isCleaningUp else { return }
                         self.addDebugMessage("All chunks sent, completing operation")
                         
                         // Transition to finalizing state
                         self.updateTransferState(.finalizing, progress: 0.9)
                         
-                        self.finishCalendarDataSending(success: true)
+                        self.finishFinanceDataSending(success: true)
                     }
                 }
             }
@@ -755,10 +816,10 @@ class BluetoothManager: NSObject, ObservableObject {
         // Increase from 5.0 to 15.0 seconds margin
         let totalTimeout = 3.0 + (Double(totalChunks) * 1.0) + 15.0 // Base delay + all chunks + 15 second margin
         DispatchQueue.main.asyncAfter(deadline: .now() + totalTimeout) { [weak self] in
-            guard let self = self, self.sendingCalendarData, !self.isCleaningUp else { return }
+            guard let self = self, self.sendingFinanceData, !self.isCleaningUp else { return }
             
             self.addDebugMessage("Master timeout reached, ensuring operation completes")
-            self.finishCalendarDataSending(success: true)
+            self.finishFinanceDataSending(success: true)
         }
     }
     
@@ -767,7 +828,7 @@ class BluetoothManager: NSObject, ObservableObject {
         guard let data = pendingData,
               let peripheral = pendingPeripheral,
               let characteristic = pendingCharacteristic else {
-            finishCalendarDataSending(success: false, errorMessage: "Missing data for retry")
+            finishFinanceDataSending(success: false, errorMessage: "Missing data for retry")
             return
         }
         
@@ -775,7 +836,7 @@ class BluetoothManager: NSObject, ObservableObject {
         
         if writeRetryCount > maxRetryAttempts {
             self.addDebugMessage("Exceeded maximum retry attempts")
-            finishCalendarDataSending(success: false, errorMessage: "Failed after \(maxRetryAttempts) retry attempts")
+            finishFinanceDataSending(success: false, errorMessage: "Failed after \(maxRetryAttempts) retry attempts")
             return
         }
         
@@ -792,8 +853,8 @@ class BluetoothManager: NSObject, ObservableObject {
         }
     }
     
-    // Write calendar data to characteristic 
-    private func writeCalendarDataToCharacteristic(calendarData: CalendarData, characteristic: CBCharacteristic, peripheral: CBPeripheral) {
+    // Write finance data to characteristic 
+    private func writeFinanceDataToCharacteristic(financeData: FinanceData, characteristic: CBCharacteristic, peripheral: CBPeripheral) {
         // Prevent duplicate writes when discovering multiple services
         guard !hasAttemptedWrite else {
             self.addDebugMessage("Already attempted write, skipping duplicate")
@@ -804,32 +865,32 @@ class BluetoothManager: NSObject, ObservableObject {
         writeRetryCount = 0
         hasAttemptedWrite = true
         
-        // Debug the calendar data being sent
-        self.addDebugMessage("Calendar data to send:")
-        self.addDebugMessage("- Sender: \(calendarData.senderName)")
-        self.addDebugMessage("- Timestamp: \(calendarData.timestamp)")
-        self.addDebugMessage("- Number of entries: \(calendarData.entries.count)")
+        // Debug the finance data being sent
+        self.addDebugMessage("Finance data to send:")
+        self.addDebugMessage("- Sender: \(financeData.senderName)")
+        self.addDebugMessage("- Timestamp: \(financeData.timestamp)")
+        self.addDebugMessage("- Number of transactions: \(financeData.transactions.count)")
         
         // DRASTICALLY REDUCE data size by sending only essential information
         // Create a single simplified dictionary instead of full JSON objects
         let simpleData: [String: Any] = [
-            "sender": calendarData.senderName,
-            "timestamp": Int(calendarData.timestamp.timeIntervalSince1970),
-            "entryCount": calendarData.entries.count,
-            // Flatten entries into simple arrays to reduce JSON overhead
-            "months": calendarData.entries.map { $0.month },
-            "days": calendarData.entries.map { $0.day },
-            "titles": calendarData.entries.map { $0.title.prefix(15) },
-            "locations": calendarData.entries.map { $0.location.prefix(15) }
+            "sender": financeData.senderName,
+            "timestamp": Int(financeData.timestamp.timeIntervalSince1970),
+            "transactionCount": financeData.transactions.count,
+            // Flatten transactions into simple arrays to reduce JSON overhead
+            "amounts": financeData.transactions.map { $0.amount },
+            "descriptions": financeData.transactions.map { $0.description.prefix(20) },
+            "categories": financeData.transactions.map { $0.category },
+            "dates": financeData.transactions.map { Int($0.date.timeIntervalSince1970) }
         ]
         
         // Convert to JSON data with minimum overhead
         guard let data = try? JSONSerialization.data(withJSONObject: simpleData, options: []) else {
-            self.addDebugMessage("Error: Failed to convert simplified calendar data to JSON")
+            self.addDebugMessage("Error: Failed to convert simplified finance data to JSON")
             self.updateOnMainThread {
-                self.sendingCalendarData = false
+                self.sendingFinanceData = false
                 self.hasAttemptedWrite = false
-                self.error = "Failed to convert calendar data to JSON"
+                self.error = "Failed to convert finance data to JSON"
             }
             return
         }
@@ -839,7 +900,7 @@ class BluetoothManager: NSObject, ObservableObject {
             self.addDebugMessage("JSON data (simplified): \(jsonString)")
         }
         
-        self.addDebugMessage("Writing simplified calendar data (\(data.count) bytes) to characteristic")
+        self.addDebugMessage("Writing simplified finance data (\(data.count) bytes) to characteristic")
         
         // Use chunking approach to avoid queue overflow
         writeSmallChunks(data: data, characteristic: characteristic, peripheral: peripheral)
@@ -848,18 +909,18 @@ class BluetoothManager: NSObject, ObservableObject {
     }
     
     // Called when we want to actively disconnect after sending
-    private func finishCalendarDataSending(success: Bool, errorMessage: String? = nil) {
+    private func finishFinanceDataSending(success: Bool, errorMessage: String? = nil) {
         // Prevent multiple completion calls
-        if !sendingCalendarData {
+        if !sendingFinanceData {
             return
         }
         
         if success {
-            self.addDebugMessage("Calendar data sent successfully!")
+            self.addDebugMessage("Finance data sent successfully!")
             // Progress updates will be handled by state transitions
             // BUT DO NOT SET SUCCESS FLAG HERE - it will be set later in a single atomic update
         } else {
-            self.addDebugMessage("Failed to send calendar data: \(errorMessage ?? "Unknown error")")
+            self.addDebugMessage("Failed to send finance data: \(errorMessage ?? "Unknown error")")
             self.updateOnMainThread {
                 // Set all error state in one atomic update
                 self.error = errorMessage
@@ -894,7 +955,7 @@ class BluetoothManager: NSObject, ObservableObject {
                 
                 // Disconnect after sending
                 if let peripheral = self.peripheral, peripheral.state == .connected {
-                    self.addDebugMessage("Disconnecting after calendar data operation")
+                    self.addDebugMessage("Disconnecting after finance data operation")
                     self.centralManager.cancelPeripheralConnection(peripheral)
                 }
                 
@@ -919,35 +980,35 @@ class BluetoothManager: NSObject, ObservableObject {
                         self.transferSuccess = true
                     }
                 }
+                
+                // After a short delay, hide the progress indicators but keep the success message
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                    guard let self = self else { return }
                     
-                    // After a short delay, hide the progress indicators but keep the success message
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                        guard let self = self else { return }
-                        
-                        // Only hide the progress indicators, keep success message visible
-                        self.updateOnMainThread {
-                            self.sendingCalendarData = false
-                        }
+                    // Only hide the progress indicators, keep success message visible
+                    self.updateOnMainThread {
+                        self.sendingFinanceData = false
                     }
+                }
+                
+                // Set a single timer for removing the success message - after a fixed delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                    guard let self = self else { return }
                     
-                    // Set a single timer for removing the success message - after a fixed delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                        guard let self = self else { return }
-                        
-                        // Final reset - all at once to avoid multiple updates
-                        self.updateOnMainThread {
-                            // Reset everything in one atomic update
-                            self.transferSuccess = nil
-                            self.transferError = nil
-                            self.transferState = .notStarted
-                            self.transferProgress = 0.0
-                            self.isCleaningUp = false
-                            // Any in-flight timers will be rejected by the isCleaningUp check
-                        }
+                    // Final reset - all at once to avoid multiple updates
+                    self.updateOnMainThread {
+                        // Reset everything in one atomic update
+                        self.transferSuccess = nil
+                        self.transferError = nil
+                        self.transferState = .notStarted
+                        self.transferProgress = 0.0
+                        self.isCleaningUp = false
+                        // Any in-flight timers will be rejected by the isCleaningUp check
                     }
                 }
             }
         }
+    }
     
     // Private method to add and process discovered Bluetooth devices - ULTRATHINK improved
     private func addDiscoveredDevice(_ peripheral: CBPeripheral, rssi: NSNumber, isSameApp: Bool, overrideName: String? = nil) {
@@ -1288,7 +1349,7 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
         switch peripheral.state {
         case .poweredOn:
             self.addDebugMessage("Peripheral Bluetooth is powered on")
-            setupCalendarService()
+            setupFinanceService()
             startAdvertising()
         case .poweredOff:
             self.addDebugMessage("Peripheral Bluetooth is powered off")
@@ -1305,34 +1366,34 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
         }
     }
     
-    // Setup the calendar service to receive calendar data
-    private func setupCalendarService() {
+    // Setup the finance service to receive finance data
+    private func setupFinanceService() {
         // Only proceed if Bluetooth is powered on
         guard peripheralManager.state == .poweredOn else {
-            self.addDebugMessage("Cannot setup calendar service - Bluetooth peripheral is not powered on")
+            self.addDebugMessage("Cannot setup finance service - Bluetooth peripheral is not powered on")
             return
         }
         
-        self.addDebugMessage("Setting up calendar service for receiving calendar data")
+        self.addDebugMessage("Setting up finance service for receiving finance data")
         
-        // Create the characteristic for calendar data
-        calendarCharacteristic = CBMutableCharacteristic(
-            type: calendarCharacteristicUUID,
+        // Create the characteristic for finance data
+        financeCharacteristic = CBMutableCharacteristic(
+            type: financeCharacteristicUUID,
             properties: [.read, .write, .notify],
             value: nil,
             permissions: [.readable, .writeable]
         )
         
-        // Create the calendar service
-        let calendarService = CBMutableService(type: calendarServiceUUID, primary: true)
+        // Create the finance service
+        let financeService = CBMutableService(type: financeServiceUUID, primary: true)
         
         // Add the characteristic to the service
-        calendarService.characteristics = [calendarCharacteristic!]
+        financeService.characteristics = [financeCharacteristic!]
         
         // Add the service to the peripheral manager
-        self.peripheralManager.add(calendarService)
+        self.peripheralManager.add(financeService)
         
-        self.addDebugMessage("Calendar service setup complete")
+        self.addDebugMessage("Finance service setup complete")
     }
     
     private func startAdvertising() {
@@ -1356,7 +1417,7 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
         
         // Start advertising both services with the personalized device name
         self.peripheralManager.startAdvertising([
-            CBAdvertisementDataServiceUUIDsKey: [connectWithAppServiceUUID, calendarServiceUUID],
+            CBAdvertisementDataServiceUUIDsKey: [connectWithAppServiceUUID, financeServiceUUID],
             CBAdvertisementDataLocalNameKey: deviceCustomName
         ])
         
@@ -1370,8 +1431,8 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
         for request in requests {
             self.addDebugMessage("Received write request to characteristic: \(request.characteristic.uuid.uuidString)")
             
-            // Check if this is a write to our calendar characteristic
-            if request.characteristic.uuid == calendarCharacteristicUUID, let data = request.value {
+            // Check if this is a write to our finance characteristic
+            if request.characteristic.uuid == financeCharacteristicUUID, let data = request.value {
                 // Check if this is a new transmission or continuation
                 let isNewTransmission = shouldStartNewTransmission()
                 
@@ -1403,29 +1464,30 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
                     // Extract fields from the simplified format
                     if let sender = jsonObject["sender"] as? String,
                        let timestamp = jsonObject["timestamp"] as? Int,
-                       let months = jsonObject["months"] as? [Int],
-                       let days = jsonObject["days"] as? [Int],
-                       let titles = jsonObject["titles"] as? [String],
-                       let locations = jsonObject["locations"] as? [String] {
+                       let amounts = jsonObject["amounts"] as? [Double],
+                       let descriptions = jsonObject["descriptions"] as? [String],
+                       let categories = jsonObject["categories"] as? [String],
+                       let datestamps = jsonObject["dates"] as? [Int] {
                         
-                        // Create calendar entries from the arrays
-                        var entries: [CalendarEntry] = []
+                        // Create finance transactions from the arrays
+                        var transactions: [FinanceTransaction] = []
                         
                         // Ensure all arrays have the same length
-                        let entryCount = min(months.count, days.count, titles.count, locations.count)
+                        let transactionCount = min(amounts.count, descriptions.count, categories.count, datestamps.count)
                         
-                        for i in 0..<entryCount {
-                            let entry = CalendarEntry(
-                                title: titles[i],
-                                location: locations[i],
-                                month: months[i],
-                                day: days[i]
+                        for i in 0..<transactionCount {
+                            let transactionDate = Date(timeIntervalSince1970: TimeInterval(datestamps[i]))
+                            let transaction = FinanceTransaction(
+                                amount: amounts[i],
+                                description: descriptions[i],
+                                category: categories[i],
+                                date: transactionDate
                             )
-                            entries.append(entry)
-                            self.addDebugMessage("  - Reconstructed Month \(months[i]), Day \(days[i]): '\(titles[i])' at '\(locations[i])'")
+                            transactions.append(transaction)
+                            self.addDebugMessage("  - Reconstructed Transaction: $\(String(format: "%.2f", amounts[i])) for '\(descriptions[i])' in category '\(categories[i])'")
                         }
                         
-                        // Create a CalendarData object
+                        // Create a FinanceData object
                         let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
                         
                         // ULTRATHINK: Look up the proper device name using our helper function
@@ -1436,9 +1498,9 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
                         properSenderName = getBestDeviceName(for: requestCentral.identifier)
                         self.addDebugMessage("ULTRATHINK: Using better device name: \(properSenderName) instead of \(sender)")
                         
-                        let calendarData = CalendarData(
+                        let financeData = FinanceData(
                             senderName: properSenderName,
-                            entries: entries,
+                            transactions: transactions,
                             timestamp: date
                         )
                         
@@ -1447,20 +1509,20 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
                         receivedChunkCount = 0
                         lastChunkTimestamp = nil
                         
-                        self.addDebugMessage("Successfully reconstructed calendar data with \(entries.count) entries")
+                        self.addDebugMessage("Successfully reconstructed finance data with \(transactions.count) transactions")
                         
-                        // Store the received calendar data
+                        // Store the received finance data
                         self.updateOnMainThread {
-                            self.receivedCalendarData = calendarData
+                            self.receivedFinanceData = financeData
                             
-                            // EXTRA DEBUG: Dump the first few entries for verification
-                            for (index, entry) in calendarData.entries.prefix(3).enumerated() {
-                                self.addDebugMessage("DEBUG Entry \(index): Month \(entry.month), Day \(entry.day), Title: \(entry.title), Location: \(entry.location)")
+                            // EXTRA DEBUG: Dump the first few transactions for verification
+                            for (index, transaction) in financeData.transactions.prefix(3).enumerated() {
+                                self.addDebugMessage("DEBUG Transaction \(index): $\(String(format: "%.2f", transaction.amount)) for \(transaction.description) in category \(transaction.category)")
                             }
                             
-                            // Update our local calendar with the received data 
-                            // (This will also update calendarChangeDescriptions)
-                            self.updateCalendarWithReceivedData(calendarData)
+                            // Update our local transactions with the received data 
+                            // (This will also update financeChangeDescriptions)
+                            self.updateFinanceWithReceivedData(financeData)
                             
                             // Important: Wait a tiny bit to ensure changes are processed first
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -1468,9 +1530,9 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
                                 
                                 // Show in-app alert with an explicit dispatch to main thread
                                 self.addDebugMessage("⚠️ Ready to show alert after processing changes")
-                                self.showCalendarDataAlert = true
+                                self.showFinanceDataAlert = true
                                 self.objectWillChange.send()
-                                self.showCalendarDataInAppAlert(calendarData: calendarData)
+                                self.showFinanceDataInAppAlert(financeData: financeData)
                             }
                         }
                     } else {
@@ -1506,107 +1568,88 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
         return false
     }
     
-    // Update our local calendar with the received data and generate change descriptions
-    private func updateCalendarWithReceivedData(_ calendarData: CalendarData) {
-        // Get the current entries before updating
-        let currentEntries = self.calendarEntries
+    // Update our local finance data with the received data and generate change descriptions
+    private func updateFinanceWithReceivedData(_ financeData: FinanceData) {
+        // Get the current transactions before updating
+        let currentTransactions = self.financeTransactions
         
         // Generate change descriptions before replacing
-        let changes = generateCalendarChanges(oldEntries: currentEntries, newEntries: calendarData.entries, senderName: calendarData.senderName)
+        let changes = generateFinanceChanges(oldTransactions: currentTransactions, newTransactions: financeData.transactions, senderName: financeData.senderName)
         
         // Store the changes for display in the alert
         self.updateOnMainThread {
-            self.calendarChangeDescriptions = changes
+            self.financeChangeDescriptions = changes
         }
         
         // Add the changes to history
         if !changes.isEmpty {
-            addHistoryEntry(senderName: calendarData.senderName, changes: changes)
+            addHistoryEntry(senderName: financeData.senderName, changes: changes)
         }
         
-        // Replace our calendar entries with the received ones
+        // Replace our finance transactions with the received ones
         self.updateOnMainThread {
-            self.calendarEntries = calendarData.entries
+            self.financeTransactions = financeData.transactions
             
-            // Save the updated calendar entries
-            self.saveCalendarEntries()
+            // Save the updated finance transactions
+            self.saveFinanceTransactions()
         }
         
-        self.addDebugMessage("Updated local calendar with \(calendarData.entries.count) entries from \(calendarData.senderName)")
+        self.addDebugMessage("Updated local finance data with \(financeData.transactions.count) transactions from \(financeData.senderName)")
         
         // Log the changes
         for change in changes {
-            self.addDebugMessage("Calendar change: \(change)")
+            self.addDebugMessage("Finance change: \(change)")
         }
     }
     
-    // Generate descriptions of what changed between the old and new calendar entries
-    private func generateCalendarChanges(oldEntries: [CalendarEntry], newEntries: [CalendarEntry], senderName: String) -> [String] {
+    // Generate descriptions of what changed between the old and new finance transactions
+    private func generateFinanceChanges(oldTransactions: [FinanceTransaction], newTransactions: [FinanceTransaction], senderName: String) -> [String] {
         var changes = [String]()
         
-        // Month names for better descriptions
-        let monthNames = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
+        // Format for currency
+        let currencyFormatter = NumberFormatter()
+        currencyFormatter.numberStyle = .currency
+        currencyFormatter.locale = Locale.current
         
-        // Day of week names for better descriptions
-        let weekdayNames = [
-            "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
-        ]
-        
-        // Function to get day of week for a date
-        func dayOfWeek(month: Int, day: Int) -> String {
-            let currentYear = Calendar.current.component(.year, from: Date())
-            var dateComponents = DateComponents()
-            dateComponents.year = currentYear
-            dateComponents.month = month
-            dateComponents.day = day
-            
-            if let date = Calendar.current.date(from: dateComponents) {
-                let weekday = Calendar.current.component(.weekday, from: date)
-                // weekday is 1-based with 1 being Sunday
-                return weekdayNames[weekday - 1]
-            }
-            return ""
-        }
+        // Format for dates
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
         
         // Use the sender name directly - the bluetooth devices already have the correct names
         let nameForChanges = senderName
         
-        // Compare each entry by month
-        for newEntry in newEntries {
-            if let oldEntry = oldEntries.first(where: { $0.month == newEntry.month }) {
-                // Compare day
-                if oldEntry.day != newEntry.day {
-                    let oldDayOfWeek = dayOfWeek(month: oldEntry.month, day: oldEntry.day)
-                    let newDayOfWeek = dayOfWeek(month: newEntry.month, day: newEntry.day)
-                    
-                    changes.append("\(monthNames[newEntry.month - 1])'s event was moved from \(oldDayOfWeek) the \(oldEntry.day)\(ordinalSuffix(oldEntry.day)) to \(newDayOfWeek) the \(newEntry.day)\(ordinalSuffix(newEntry.day)) by \(nameForChanges).")
-                }
-                
-                // Compare title
-                if oldEntry.title != newEntry.title && !oldEntry.title.isEmpty && !newEntry.title.isEmpty {
-                    changes.append("\(monthNames[newEntry.month - 1])'s event title was changed from '\(oldEntry.title)' to '\(newEntry.title)' by \(nameForChanges).")
-                } else if oldEntry.title.isEmpty && !newEntry.title.isEmpty {
-                    changes.append("\(monthNames[newEntry.month - 1])'s event title was set to '\(newEntry.title)' by \(nameForChanges).")
-                }
-                
-                // Compare location
-                if oldEntry.location != newEntry.location && !oldEntry.location.isEmpty && !newEntry.location.isEmpty {
-                    changes.append("\(monthNames[newEntry.month - 1])'s event location was changed from '\(oldEntry.location)' to '\(newEntry.location)' by \(nameForChanges).")
-                } else if oldEntry.location.isEmpty && !newEntry.location.isEmpty {
-                    changes.append("\(monthNames[newEntry.month - 1])'s event location was set to '\(newEntry.location)' by \(nameForChanges).")
-                }
+        // Count new transactions by category
+        var newTransactionsByCategory: [String: Int] = [:]
+        for transaction in newTransactions {
+            if !oldTransactions.contains(where: { $0.id == transaction.id }) {
+                let category = transaction.category
+                newTransactionsByCategory[category] = (newTransactionsByCategory[category] ?? 0) + 1
+            }
+        }
+        
+        // Add descriptions for new transactions by category
+        for (category, count) in newTransactionsByCategory {
+            changes.append("\(count) new \(category) transaction\(count > 1 ? "s" : "") received from \(nameForChanges).")
+        }
+        
+        // Calculate total amount of new transactions
+        let totalNewAmount = newTransactions.filter { transaction in
+            !oldTransactions.contains(where: { $0.id == transaction.id })
+        }.reduce(0) { $0 + $1.amount }
+        
+        if totalNewAmount != 0 {
+            let formattedAmount = currencyFormatter.string(from: NSNumber(value: abs(totalNewAmount))) ?? "$\(abs(totalNewAmount))"
+            if totalNewAmount > 0 {
+                changes.append("Total income of \(formattedAmount) received from \(nameForChanges).")
             } else {
-                // New entry for a month that didn't exist before
-                changes.append("New event added for \(monthNames[newEntry.month - 1]) by \(nameForChanges).")
+                changes.append("Total expense of \(formattedAmount) received from \(nameForChanges).")
             }
         }
         
         // If no specific changes were detected, provide a general update message
         if changes.isEmpty {
-            changes.append("Calendar updated by \(nameForChanges) with \(newEntries.count) entries.")
+            changes.append("Finance data updated by \(nameForChanges) with \(newTransactions.count) transactions.")
         }
         
         return changes
@@ -1649,12 +1692,12 @@ extension BluetoothManager: CBPeripheralManagerDelegate {
             self.addDebugMessage("Restored \(services.count) services")
             for service in services {
                 self.addDebugMessage("Restored service: \(service.uuid.uuidString)")
-                if service.uuid == calendarServiceUUID, let characteristics = service.characteristics {
+                if service.uuid == financeServiceUUID, let characteristics = service.characteristics {
                     for characteristic in characteristics {
-                        if characteristic.uuid == calendarCharacteristicUUID {
+                        if characteristic.uuid == financeCharacteristicUUID {
                             // Re-save our characteristic reference
-                            self.calendarCharacteristic = (characteristic as! CBMutableCharacteristic)
-                            self.addDebugMessage("Restored calendar characteristic")
+                            self.financeCharacteristic = (characteristic as! CBMutableCharacteristic)
+                            self.addDebugMessage("Restored finance characteristic")
                         }
                     }
                 }
@@ -1671,7 +1714,7 @@ extension BluetoothManager: CBPeripheralDelegate {
             self.updateOnMainThread {
                 self.error = "Error discovering services: \(error.localizedDescription)"
             }
-            finishCalendarDataSending(success: false, errorMessage: "Error discovering services")
+            finishFinanceDataSending(success: false, errorMessage: "Error discovering services")
             return
         }
         
@@ -1681,31 +1724,31 @@ extension BluetoothManager: CBPeripheralDelegate {
                 self.services = services
             }
             
-            // Check if there's a calendar service among the discovered services
-            var foundCalendarService = false
+            // Check if there's a finance service among the discovered services
+            var foundFinanceService = false
             
             for service in services {
                 self.addDebugMessage("Service: \(service.uuid.uuidString)")
                 
-                if service.uuid == calendarServiceUUID {
-                    foundCalendarService = true
-                    self.addDebugMessage("Found calendar service")
-                    // Discover characteristics for calendar service
-                    peripheral.discoverCharacteristics([calendarCharacteristicUUID], for: service)
+                if service.uuid == financeServiceUUID {
+                    foundFinanceService = true
+                    self.addDebugMessage("Found finance service")
+                    // Discover characteristics for finance service
+                    peripheral.discoverCharacteristics([financeCharacteristicUUID], for: service)
                 } else {
                     // Discover all characteristics for other services
                     peripheral.discoverCharacteristics(nil, for: service)
                 }
             }
             
-            if !foundCalendarService && sendingCalendarData {
-                self.addDebugMessage("Error: Calendar service not found on device")
-                finishCalendarDataSending(success: false, errorMessage: "Calendar service not available on this device")
+            if !foundFinanceService && sendingFinanceData {
+                self.addDebugMessage("Error: Finance service not found on device")
+                finishFinanceDataSending(success: false, errorMessage: "Finance service not available on this device")
             }
         } else {
-            if sendingCalendarData {
+            if sendingFinanceData {
                 self.addDebugMessage("Error: No services found")
-                finishCalendarDataSending(success: false, errorMessage: "No services found on device")
+                finishFinanceDataSending(success: false, errorMessage: "No services found on device")
             }
         }
     }
@@ -1717,8 +1760,8 @@ extension BluetoothManager: CBPeripheralDelegate {
                 self.error = "Error discovering characteristics: \(error.localizedDescription)"
             }
             
-            if service.uuid == calendarServiceUUID && sendingCalendarData {
-                finishCalendarDataSending(success: false, errorMessage: "Error discovering characteristics")
+            if service.uuid == financeServiceUUID && sendingFinanceData {
+                finishFinanceDataSending(success: false, errorMessage: "Error discovering characteristics")
             }
             return
         }
@@ -1726,35 +1769,35 @@ extension BluetoothManager: CBPeripheralDelegate {
         if let characteristics = service.characteristics {
             self.addDebugMessage("Discovered \(characteristics.count) characteristics for service \(service.uuid.uuidString)")
             
-            // Check if this is the calendar service
-            if service.uuid == calendarServiceUUID {
-                // Find the calendar characteristic
-                var foundCalendarCharacteristic = false
+            // Check if this is the finance service
+            if service.uuid == financeServiceUUID {
+                // Find the finance characteristic
+                var foundFinanceCharacteristic = false
                 
                 for characteristic in characteristics {
                     self.addDebugMessage("Characteristic: \(characteristic.uuid.uuidString), properties: \(characteristic.properties.rawValue)")
                     
-                    if characteristic.uuid == calendarCharacteristicUUID {
-                        foundCalendarCharacteristic = true
-                        self.addDebugMessage("Found calendar characteristic")
+                    if characteristic.uuid == financeCharacteristicUUID {
+                        foundFinanceCharacteristic = true
+                        self.addDebugMessage("Found finance characteristic")
                         
-                        // If we're trying to send calendar data, proceed
-                        if sendingCalendarData {
-                            let calendarData = CalendarData(senderName: deviceCustomName, entries: calendarEntries)
-                            writeCalendarDataToCharacteristic(calendarData: calendarData, characteristic: characteristic, peripheral: peripheral)
+                        // If we're trying to send finance data, proceed
+                        if sendingFinanceData {
+                            let financeData = FinanceData(senderName: deviceCustomName, transactions: financeTransactions)
+                            writeFinanceDataToCharacteristic(financeData: financeData, characteristic: characteristic, peripheral: peripheral)
                         }
                         
-                        // Setup notifications for incoming calendar data
+                        // Setup notifications for incoming finance data
                         if characteristic.properties.contains(.notify) {
-                            self.addDebugMessage("Setting up notifications for calendar characteristic")
+                            self.addDebugMessage("Setting up notifications for finance characteristic")
                             peripheral.setNotifyValue(true, for: characteristic)
                         }
                     }
                 }
                 
-                if !foundCalendarCharacteristic && sendingCalendarData {
-                    self.addDebugMessage("Error: Calendar characteristic not found")
-                    finishCalendarDataSending(success: false, errorMessage: "Calendar characteristic not available")
+                if !foundFinanceCharacteristic && sendingFinanceData {
+                    self.addDebugMessage("Error: Finance characteristic not found")
+                    finishFinanceDataSending(success: false, errorMessage: "Finance characteristic not available")
                 }
             } else {
                 // Standard handling for other characteristics
@@ -1783,46 +1826,46 @@ extension BluetoothManager: CBPeripheralDelegate {
             return
         }
         
-        // Handle calendar characteristic value updates (incoming calendar data)
-        if characteristic.uuid == calendarCharacteristicUUID, let data = characteristic.value {
-            self.addDebugMessage("Received data on calendar characteristic: \(data.count) bytes")
+        // Handle finance characteristic value updates (incoming finance data)
+        if characteristic.uuid == financeCharacteristicUUID, let data = characteristic.value {
+            self.addDebugMessage("Received data on finance characteristic: \(data.count) bytes")
             
-            if var calendarData = CalendarData.fromData(data) {
+            if var financeData = FinanceData.fromData(data) {
                 // ULTRATHINK: Get the proper device name
-                let originalSenderName = calendarData.senderName
+                let originalSenderName = financeData.senderName
                 let properSenderName = getBestDeviceName(for: peripheral.identifier)
                 
                 if originalSenderName != properSenderName {
                     self.addDebugMessage("ULTRATHINK: Improving sender name from \(originalSenderName) to \(properSenderName)")
-                    // Create a new CalendarData with the improved name
-                    calendarData = CalendarData(
+                    // Create a new FinanceData with the improved name
+                    financeData = FinanceData(
                         senderName: properSenderName, 
-                        entries: calendarData.entries,
-                        timestamp: calendarData.timestamp
+                        transactions: financeData.transactions,
+                        timestamp: financeData.timestamp
                     )
                 }
                 
-                self.addDebugMessage("Received calendar data from \(calendarData.senderName) with \(calendarData.entries.count) entries")
+                self.addDebugMessage("Received finance data from \(financeData.senderName) with \(financeData.transactions.count) transactions")
                 
-                // Store the received calendar data using our thread-safe helper
+                // Store the received finance data using our thread-safe helper
                 self.updateOnMainThread {
-                    self.receivedCalendarData = calendarData
+                    self.receivedFinanceData = financeData
                     
-                    // Also update the device's calendar data if we can find it
+                    // Also update the device's finance data if we can find it
                     if let index = self.discoveredDevices.firstIndex(where: { $0.peripheral?.identifier == peripheral.identifier }) {
                         var device = self.discoveredDevices[index]
-                        device.receivedCalendarData = calendarData
+                        device.receivedFinanceData = financeData
                         self.discoveredDevices[index] = device
                     }
                     
-                    // Update our local calendar with the received data
-                    self.updateCalendarWithReceivedData(calendarData)
+                    // Update our local finance with the received data
+                    self.updateFinanceWithReceivedData(financeData)
                     
                     // Show in-app alert
-                    self.showCalendarDataInAppAlert(calendarData: calendarData)
+                    self.showFinanceDataInAppAlert(financeData: financeData)
                 }
             } else {
-                self.addDebugMessage("Failed to parse received calendar data")
+                self.addDebugMessage("Failed to parse received finance data")
             }
         }
         
@@ -1833,9 +1876,9 @@ extension BluetoothManager: CBPeripheralDelegate {
     }
     
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        if characteristic.uuid == calendarCharacteristicUUID {
+        if characteristic.uuid == financeCharacteristicUUID {
             if let error = error {
-                self.addDebugMessage("Error writing to calendar characteristic: \(error.localizedDescription)")
+                self.addDebugMessage("Error writing to finance characteristic: \(error.localizedDescription)")
                 
                 // If it's a "prepare queue is full" error, retry with an even smaller chunk
                 if error.localizedDescription.contains("prepare queue is full") {
@@ -1843,7 +1886,7 @@ extension BluetoothManager: CBPeripheralDelegate {
                     retryWriteIfNeeded()
                 } else {
                     // Other error, just finish
-                    finishCalendarDataSending(success: false, errorMessage: "Failed to send calendar data: \(error.localizedDescription)")
+                    finishFinanceDataSending(success: false, errorMessage: "Failed to send finance data: \(error.localizedDescription)")
                 }
             } else {
                 // Success case - if we only sent a chunk, we need to handle that
@@ -1854,31 +1897,31 @@ extension BluetoothManager: CBPeripheralDelegate {
                     
                     // We successfully sent a chunk, but there's more data - this approach is not working
                     // Let's just report success anyway since we at least sent some data
-                    self.addDebugMessage("Successfully wrote a small chunk of the calendar data")
-                    finishCalendarDataSending(success: true)
+                    self.addDebugMessage("Successfully wrote a small chunk of the finance data")
+                    finishFinanceDataSending(success: true)
                 } else {
                     // Standard success case
-                    self.addDebugMessage("Successfully wrote calendar data to characteristic")
-                    finishCalendarDataSending(success: true)
+                    self.addDebugMessage("Successfully wrote finance data to characteristic")
+                    finishFinanceDataSending(success: true)
                 }
             }
         }
     }
     
-    // Display an in-app alert for incoming calendar data
-    private func showCalendarDataInAppAlert(calendarData: CalendarData) {
-        self.addDebugMessage("⚠️ ATTEMPTING TO SHOW in-app alert: Calendar data from \(calendarData.senderName)")
-        self.addDebugMessage("⚠️ Change descriptions: \(self.calendarChangeDescriptions.joined(separator: ", "))")
+    // Display an in-app alert for incoming finance data
+    private func showFinanceDataInAppAlert(financeData: FinanceData) {
+        self.addDebugMessage("⚠️ ATTEMPTING TO SHOW in-app alert: Finance data from \(financeData.senderName)")
+        self.addDebugMessage("⚠️ Change descriptions: \(self.financeChangeDescriptions.joined(separator: ", "))")
         
         // Ensure we're on the main thread and add extra logging
         self.updateOnMainThread {
-            self.alertCalendarData = calendarData
-            self.showCalendarDataAlert = true
+            self.alertFinanceData = financeData
+            self.showFinanceDataAlert = true
             
             // Force UI refresh by sending a willChange notification
             self.objectWillChange.send()
             
-            self.addDebugMessage("⚠️ ALERT VARIABLES SET - showCalendarDataAlert: \(self.showCalendarDataAlert), alertCalendarData: \(self.alertCalendarData != nil)")
+            self.addDebugMessage("⚠️ ALERT VARIABLES SET - showFinanceDataAlert: \(self.showFinanceDataAlert), alertFinanceData: \(self.alertFinanceData != nil)")
             
             // Make multiple attempts to ensure the alert is seen
             self.scheduleAlertRetries()
@@ -1895,7 +1938,7 @@ extension BluetoothManager: CBPeripheralDelegate {
                 guard let self = self else { return }
                 
                 // Only retry if still needed and not dismissed
-                if self.showCalendarDataAlert {
+                if self.showFinanceDataAlert {
                     self.addDebugMessage("⚠️ RETRY #\(i+1): Re-enforcing alert display")
                     self.objectWillChange.send()
                 }

@@ -183,11 +183,13 @@ struct TransactionsView: View {
 
 // Single transaction row
 struct TransactionRow: View {
+    @EnvironmentObject var bluetoothManager: BluetoothManager
     let transaction: FinanceTransaction
+    @State private var showingCategoryPicker = false
     
     var body: some View {
         HStack {
-            // Category icon
+            // Category icon based on the actual Category object
             Image(systemName: categoryIcon)
                 .foregroundColor(categoryColor)
                 .font(.system(size: 24))
@@ -211,8 +213,21 @@ struct TransactionRow: View {
             Text(formatAmount(transaction.amount))
                 .fontWeight(.semibold)
                 .foregroundColor(transaction.amount >= 0 ? .green : .red)
+                
+            // Add an edit button
+            Button(action: {
+                showingCategoryPicker = true
+            }) {
+                Image(systemName: "pencil")
+                    .foregroundColor(.gray)
+                    .font(.footnote)
+            }
+            .buttonStyle(BorderlessButtonStyle())
         }
         .padding(.vertical, 8)
+        .sheet(isPresented: $showingCategoryPicker) {
+            TransactionCategoryPickerView(transaction: transaction, isPresented: $showingCategoryPicker)
+        }
     }
     
     // Format currency amount
@@ -223,44 +238,108 @@ struct TransactionRow: View {
         return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
     }
     
-    // Choose icon based on category
+    // Get icon based on the category model
     private var categoryIcon: String {
-        switch transaction.category.lowercased() {
-        case "groceries":
-            return "cart.fill"
-        case "dining":
-            return "fork.knife"
-        case "entertainment":
-            return "gamecontroller.fill"
-        case "fitness":
-            return "figure.walk"
-        case "healthcare":
-            return "heart.fill"
-        case "income":
-            return "arrow.down.circle.fill"
-        default:
-            return "dollarsign.circle.fill"
+        if let category = bluetoothManager.getCategory(byName: transaction.category) {
+            return category.icon
+        } else {
+            // Fallbacks based on category name if no corresponding Category object
+            switch transaction.category.lowercased() {
+            case "groceries", "food":
+                return "cart.fill"
+            case "dining":
+                return "fork.knife"
+            case "entertainment":
+                return "gamecontroller.fill"
+            case "fitness":
+                return "figure.walk"
+            case "healthcare":
+                return "heart.fill"
+            case "income":
+                return "arrow.down.circle.fill"
+            default:
+                return "dollarsign.circle.fill"
+            }
         }
     }
     
-    // Choose color based on category
+    // Get color based on the category model
     private var categoryColor: Color {
-        switch transaction.category.lowercased() {
-        case "groceries":
-            return .blue
-        case "dining":
-            return .orange
-        case "entertainment":
-            return .purple
-        case "fitness":
-            return .green
-        case "healthcare":
-            return .red
-        case "income":
-            return .green
-        default:
-            return .gray
+        if let category = bluetoothManager.getCategory(byName: transaction.category) {
+            return category.color
+        } else {
+            // Fallbacks based on category name if no corresponding Category object
+            switch transaction.category.lowercased() {
+            case "groceries", "food":
+                return .blue
+            case "dining":
+                return .orange
+            case "entertainment":
+                return .purple
+            case "fitness", "income":
+                return .green
+            case "healthcare":
+                return .red
+            default:
+                return .gray
+            }
         }
+    }
+}
+
+// View for picking a category for a transaction
+struct TransactionCategoryPickerView: View {
+    @EnvironmentObject var bluetoothManager: BluetoothManager
+    let transaction: FinanceTransaction
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(bluetoothManager.categories) { category in
+                    Button(action: {
+                        updateTransactionCategory(to: category.name)
+                        isPresented = false
+                    }) {
+                        HStack {
+                            Image(systemName: category.icon)
+                                .foregroundColor(category.color)
+                                .font(.system(size: 24))
+                                .frame(width: 32, height: 32)
+                                .background(category.color.opacity(0.1))
+                                .cornerRadius(8)
+                            
+                            Text(category.name)
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            if transaction.category == category.name {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                }
+            }
+            .navigationTitle("Select Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private func updateTransactionCategory(to categoryName: String) {
+        bluetoothManager.updateFinanceTransaction(
+            id: transaction.id,
+            category: categoryName
+        )
     }
 }
 

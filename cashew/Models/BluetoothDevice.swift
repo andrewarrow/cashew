@@ -1,5 +1,84 @@
 import Foundation
 import CoreBluetooth
+import SwiftUI
+
+// Category model for organizing finance transactions
+struct Category: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var icon: String
+    var color: Color
+    
+    // CodingKeys needed since Color is not directly Codable
+    enum CodingKeys: String, CodingKey {
+        case id, name, icon, colorString
+    }
+    
+    init(id: UUID = UUID(), name: String, icon: String, color: Color) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.color = color
+    }
+    
+    // Custom encoding to handle Color
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(icon, forKey: .icon)
+        
+        // Store color as a string
+        if let colorString = colorToString(color) {
+            try container.encode(colorString, forKey: .colorString)
+        }
+    }
+    
+    // Custom decoding to handle Color
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        icon = try container.decode(String.self, forKey: .icon)
+        
+        // Convert string back to color
+        let colorString = try container.decode(String.self, forKey: .colorString)
+        color = stringToColor(colorString) ?? .gray
+    }
+    
+    // Helper function to convert Color to String
+    private func colorToString(_ color: Color) -> String? {
+        if color == .blue { return "blue" }
+        if color == .red { return "red" }
+        if color == .green { return "green" }
+        if color == .orange { return "orange" }
+        if color == .purple { return "purple" }
+        if color == .yellow { return "yellow" }
+        if color == .pink { return "pink" }
+        if color == .gray { return "gray" }
+        return "gray" // Default
+    }
+    
+    // Helper function to convert String to Color
+    private func stringToColor(_ string: String) -> Color? {
+        switch string {
+        case "blue": return .blue
+        case "red": return .red
+        case "green": return .green
+        case "orange": return .orange
+        case "purple": return .purple
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "gray": return .gray
+        default: return .gray
+        }
+    }
+    
+    // Equality check
+    static func == (lhs: Category, rhs: Category) -> Bool {
+        return lhs.id == rhs.id
+    }
+}
 
 // Finance transaction entry with amount, description, category, and date
 struct FinanceTransaction: Identifiable, Codable {

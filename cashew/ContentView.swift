@@ -25,6 +25,13 @@ struct ContentView: View {
                     Image(systemName: "dollarsign.circle")
                     Text("Transactions")
                 }
+            
+            CategoryView()
+                .environmentObject(bluetoothManager)
+                .tabItem {
+                    Image(systemName: "tag.fill")
+                    Text("Categories")
+                }
         }
     }
 }

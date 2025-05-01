@@ -53,6 +53,7 @@ class BluetoothManager: NSObject, ObservableObject {
     @Published var debugMessages: [String] = []
     @Published var financeTransactions: [FinanceTransaction] = []
     @Published var receivedFinanceData: FinanceData?
+    @Published var categories: [Category] = []
     
     // Flag to indicate we're in cleanup mode - prevents timer callbacks from triggering
     private var isCleaningUp: Bool = false
@@ -102,6 +103,118 @@ class BluetoothManager: NSObject, ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.performDeferredInitialization()
         }
+    }
+    
+    // MARK: - Category Management
+    
+    // Initialize default categories
+    private func initializeDefaultCategories() {
+        if self.categories.isEmpty {
+            let defaultCategories = [
+                Category(name: "Food", icon: "cart.fill", color: .blue),
+                Category(name: "Dining", icon: "fork.knife", color: .orange),
+                Category(name: "Entertainment", icon: "gamecontroller.fill", color: .purple),
+                Category(name: "Shopping", icon: "bag.fill", color: .green),
+                Category(name: "Transportation", icon: "car.fill", color: .red),
+                Category(name: "Utilities", icon: "bolt.fill", color: .yellow),
+                Category(name: "Healthcare", icon: "heart.fill", color: .pink),
+                Category(name: "Income", icon: "arrow.down.circle.fill", color: .green),
+                Category(name: "Other", icon: "dollarsign.circle.fill", color: .gray)
+            ]
+            
+            self.categories = defaultCategories
+            self.saveCategories()
+            self.addDebugMessage("Initialized \(defaultCategories.count) default categories")
+        }
+    }
+    
+    // Save categories to UserDefaults
+    func saveCategories() {
+        let encoder = JSONEncoder()
+        if let encodedData = try? encoder.encode(self.categories) {
+            UserDefaults.standard.set(encodedData, forKey: "Categories")
+            self.addDebugMessage("Saved \(self.categories.count) categories to UserDefaults")
+        }
+    }
+    
+    // Load categories from UserDefaults
+    private func loadCategories() {
+        if let savedData = UserDefaults.standard.data(forKey: "Categories") {
+            let decoder = JSONDecoder()
+            if let loadedCategories = try? decoder.decode([Category].self, from: savedData) {
+                self.categories = loadedCategories
+                self.addDebugMessage("Loaded \(loadedCategories.count) categories from UserDefaults")
+            } else {
+                // If failed to decode, initialize defaults
+                initializeDefaultCategories()
+            }
+        } else {
+            // If no saved data, initialize defaults
+            initializeDefaultCategories()
+        }
+    }
+    
+    // Add a new category
+    func addCategory(name: String, icon: String, color: Color) {
+        let newCategory = Category(name: name, icon: icon, color: color)
+        self.categories.append(newCategory)
+        self.saveCategories()
+        self.addDebugMessage("Added new category: \(name)")
+    }
+    
+    // Update an existing category
+    func updateCategory(id: UUID, name: String? = nil, icon: String? = nil, color: Color? = nil) {
+        if let index = self.categories.firstIndex(where: { $0.id == id }) {
+            var updatedCategory = self.categories[index]
+            
+            if let name = name {
+                updatedCategory.name = name
+            }
+            
+            if let icon = icon {
+                updatedCategory.icon = icon
+            }
+            
+            if let color = color {
+                updatedCategory.color = color
+            }
+            
+            self.categories[index] = updatedCategory
+            self.addDebugMessage("Updated category with ID: \(id.uuidString)")
+            self.saveCategories()
+        }
+    }
+    
+    // Delete a category
+    func deleteCategory(id: UUID) {
+        // Only delete if it's not the last category and not "Other"
+        if categories.count > 1, 
+           let index = categories.firstIndex(where: { $0.id == id }),
+           categories[index].name != "Other" {
+            
+            // Get the "Other" category to reassign transactions
+            let otherCategory = categories.first(where: { $0.name == "Other" })?.name ?? "Other"
+            
+            // Update any transactions using this category to "Other"
+            for i in 0..<financeTransactions.count {
+                if financeTransactions[i].category == categories[index].name {
+                    financeTransactions[i].category = otherCategory
+                }
+            }
+            
+            // Remove the category
+            categories.remove(at: index)
+            self.addDebugMessage("Deleted category with ID: \(id.uuidString)")
+            
+            // Save both categories and transactions
+            saveCategories()
+            saveFinanceTransactions()
+        }
+    }
+    
+    // Get category by name
+    func getCategory(byName name: String) -> Category? {
+        return categories.first(where: { $0.name == name })
     }
     
     // This function is called after a delay to ensure UI is visible first
@@ -210,6 +323,9 @@ class BluetoothManager: NSObject, ObservableObject {
         
         // Load saved finance transactions from UserDefaults
         self.loadFinanceTransactions()
+        
+        // Load saved categories from UserDefaults
+        self.loadCategories()
         
         // Load saved history entries from UserDefaults
         self.loadHistoryEntries()

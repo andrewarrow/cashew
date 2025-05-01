@@ -29,7 +29,7 @@ struct Category: Identifiable, Codable, Equatable {
         try container.encode(icon, forKey: .icon)
         
         // Store color as a string
-        if let colorString = colorToString(color) {
+        if let colorString = Category.colorToString(color) {
             try container.encode(colorString, forKey: .colorString)
         }
     }
@@ -43,11 +43,11 @@ struct Category: Identifiable, Codable, Equatable {
         
         // Convert string back to color
         let colorString = try container.decode(String.self, forKey: .colorString)
-        color = stringToColor(colorString) ?? .gray
+        self.color = Category.stringToColor(colorString) ?? .gray
     }
     
     // Helper function to convert Color to String
-    private func colorToString(_ color: Color) -> String? {
+    private static func colorToString(_ color: Color) -> String? {
         if color == .blue { return "blue" }
         if color == .red { return "red" }
         if color == .green { return "green" }
@@ -60,7 +60,7 @@ struct Category: Identifiable, Codable, Equatable {
     }
     
     // Helper function to convert String to Color
-    private func stringToColor(_ string: String) -> Color? {
+    private static func stringToColor(_ string: String) -> Color? {
         switch string {
         case "blue": return .blue
         case "red": return .red

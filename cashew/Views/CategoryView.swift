@@ -9,44 +9,42 @@ struct CategoryView: View {
     @State private var alertMessage = ""
     
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(dataManager.categories) { category in
-                    CategoryRow(category: category)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            editingCategory = category
-                        }
-                }
-                .onDelete { indexSet in
-                    handleDelete(at: indexSet)
-                }
-            }
-            .listStyle(InsetGroupedListStyle())
-            .navigationTitle("Categories")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddCategorySheet = true
-                    } label: {
-                        Image(systemName: "plus")
+        List {
+            ForEach(dataManager.categories) { category in
+                CategoryRow(category: category)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        editingCategory = category
                     }
+            }
+            .onDelete { indexSet in
+                handleDelete(at: indexSet)
+            }
+        }
+        .listStyle(InsetGroupedListStyle())
+        .navigationTitle("Categories")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddCategorySheet = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .sheet(isPresented: $showingAddCategorySheet) {
-                AddCategoryView(isPresented: $showingAddCategorySheet)
-            }
-            .sheet(item: $editingCategory) { category in
-                EditCategoryView(isPresented: Binding<Bool>(
-                    get: { editingCategory != nil },
-                    set: { if !$0 { editingCategory = nil } }
-                ), category: category)
-            }
-            .alert(isPresented: $showAlert) {
-                Alert(title: Text(alertTitle), 
-                      message: Text(alertMessage), 
-                      dismissButton: .default(Text("OK")))
-            }
+        }
+        .sheet(isPresented: $showingAddCategorySheet) {
+            AddCategoryView(isPresented: $showingAddCategorySheet)
+        }
+        .sheet(item: $editingCategory) { category in
+            EditCategoryView(isPresented: Binding<Bool>(
+                get: { editingCategory != nil },
+                set: { if !$0 { editingCategory = nil } }
+            ), category: category)
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text(alertTitle), 
+                  message: Text(alertMessage), 
+                  dismissButton: .default(Text("OK")))
         }
     }
     

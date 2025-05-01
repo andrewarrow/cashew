@@ -12,26 +12,32 @@ struct ContentView: View {
     
     var body: some View {
         TabView {
-            ShareView()
-                .environmentObject(dataManager)
-                .tabItem {
-                    Image(systemName: "square.and.arrow.up.on.square")
-                    Text("Share")
-                }
+            NavigationView {
+                ShareView()
+                    .environmentObject(dataManager)
+            }
+            .tabItem {
+                Image(systemName: "square.and.arrow.up.on.square")
+                Text("Share")
+            }
             
-            TransactionsView()
-                .environmentObject(dataManager)
-                .tabItem {
-                    Image(systemName: "dollarsign.circle")
-                    Text("Transactions")
-                }
+            NavigationView {
+                TransactionsView()
+                    .environmentObject(dataManager)
+            }
+            .tabItem {
+                Image(systemName: "dollarsign.circle")
+                Text("Transactions")
+            }
             
-            CategoryView()
-                .environmentObject(dataManager)
-                .tabItem {
-                    Image(systemName: "tag.fill")
-                    Text("Categories")
-                }
+            NavigationView {
+                CategoryView()
+                    .environmentObject(dataManager)
+            }
+            .tabItem {
+                Image(systemName: "tag.fill")
+                Text("Categories")
+            }
         }
     }
 }

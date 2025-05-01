@@ -15,80 +15,79 @@ struct ShareView: View {
     @State private var importErrorObserver: NSObjectProtocol?
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background
-                Color(UIColor.systemGroupedBackground)
-                    .edgesIgnoringSafeArea(.all)
-                
-                VStack(spacing: 20) {
-                    // Error Banner (if needed)
-                    if let error = dataManager.error {
-                        ErrorBanner(message: error)
-                    }
-                    
-                    // Main content
-                    VStack(spacing: 30) {
-                        // Import Card
-                        ShareActionCard(
-                            iconName: "square.and.arrow.down",
-                            title: "Import Transactions",
-                            description: "Import transaction data from JSON files",
-                            buttonText: "Import",
-                            action: { isImporting = true }
-                        )
-                        
-                        // Export Card
-                        ShareActionCard(
-                            iconName: "square.and.arrow.up",
-                            title: "Export Transactions",
-                            description: "Save your transaction data as a JSON file",
-                            buttonText: "Export",
-                            action: { prepareAndExport() }
-                        )
-                        
-                        Spacer()
-                        
-                        // History button
-                        NavigationLink(destination: HistoryView()) {
-                            HStack {
-                                Image(systemName: "clock.arrow.circlepath")
-                                    .font(.headline)
-                                Text("View Transaction History")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.blue)
-                            .padding()
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
+        ZStack {
+            // Background
+            Color(UIColor.systemGroupedBackground)
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 20) {
+                // Error Banner (if needed)
+                if let error = dataManager.error {
+                    ErrorBanner(message: error)
                 }
-            }
-            .navigationTitle("Share")
-            .navigationBarTitleDisplayMode(.inline)
-            .fileImporter(
-                isPresented: $isImporting,
-                allowedContentTypes: [UTType.json],
-                allowsMultipleSelection: false
-            ) { result in
-                handleImport(result: result)
-            }
-            .fileExporter(
-                isPresented: $isExporting,
-                document: JSONDocument(data: exportData ?? Data()),
-                contentType: UTType.json,
-                defaultFilename: "cashew_transactions.json"
-            ) { result in
-                handleExport(result: result)
-            }
-            .alert(isPresented: $showAlert) {
-                Alert(
-                    title: Text(alertTitle),
-                    message: Text(alertMessage),
-                    dismissButton: .default(Text("OK"))
+                
+                // Main content - removing nested VStack
+                // Import Card
+                ShareActionCard(
+                    iconName: "square.and.arrow.down",
+                    title: "Import",
+                    description: "Import transaction data from JSON files",
+                    buttonText: "Import",
+                    action: { isImporting = true }
                 )
+                
+                // Export Card
+                ShareActionCard(
+                    iconName: "square.and.arrow.up",
+                    title: "Export",
+                    description: "Save your transaction data as a JSON file",
+                    buttonText: "Export",
+                    action: { prepareAndExport() }
+                )
+                
+                Spacer()
+                
+                // History button
+                NavigationLink(destination: HistoryView()) {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.headline)
+                        Text("View Transaction History")
+                            .font(.headline)
+                    }
+                    .foregroundColor(.blue)
+                    .padding()
+                }
+                
+                // Adding some padding at the bottom
+                Spacer().frame(height: 20)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+        }
+        .navigationTitle("Share")
+        .navigationBarTitleDisplayMode(.inline)
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [UTType.json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImport(result: result)
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: JSONDocument(data: exportData ?? Data()),
+            contentType: UTType.json,
+            defaultFilename: "cashew_transactions.json"
+        ) { result in
+            handleExport(result: result)
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(
+                title: Text(alertTitle),
+                message: Text(alertMessage),
+                dismissButton: .default(Text("OK"))
+            )
         }
         .accentColor(.blue)
         .onAppear {

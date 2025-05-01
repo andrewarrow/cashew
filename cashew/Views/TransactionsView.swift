@@ -9,73 +9,71 @@ struct TransactionsView: View {
     @State private var alertMessage = ""
     
     var body: some View {
-        NavigationView {
-            VStack {
-                if dataManager.financeTransactions.isEmpty {
-                    // Empty state
-                    VStack(spacing: 20) {
-                        Spacer()
-                        
-                        Image(systemName: "dollarsign.circle")
-                            .font(.system(size: 70))
-                            .foregroundColor(.gray.opacity(0.7))
-                        
-                        Text("No Transactions Yet")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        Text("Add transaction data to get started")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                        
-                        Button {
-                            showingAddDataModal = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                Text("Add Transaction Data")
-                            }
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                        }
-                        .padding(.top, 20)
-                        
-                        Spacer()
-                    }
-                } else {
-                    // List of transactions
-                    List {
-                        ForEach(transactionsByDate.keys.sorted(by: >), id: \.self) { date in
-                            Section(header: Text(formatDate(date))) {
-                                ForEach(transactionsByDate[date] ?? []) { transaction in
-                                    TransactionRow(transaction: transaction)
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(InsetGroupedListStyle())
-                }
-            }
-            .navigationTitle("Transactions")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+        Group {
+            if dataManager.financeTransactions.isEmpty {
+                // Empty state
+                VStack(spacing: 20) {
+                    Spacer()
+                    
+                    Image(systemName: "dollarsign.circle")
+                        .font(.system(size: 70))
+                        .foregroundColor(.gray.opacity(0.7))
+                    
+                    Text("No Transactions Yet")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Text("Add transaction data to get started")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                    
                     Button {
                         showingAddDataModal = true
                     } label: {
-                        Image(systemName: "plus")
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Add Transaction Data")
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 20)
+                    
+                    Spacer()
+                }
+            } else {
+                // List of transactions
+                List {
+                    ForEach(transactionsByDate.keys.sorted(by: >), id: \.self) { date in
+                        Section(header: Text(formatDate(date))) {
+                            ForEach(transactionsByDate[date] ?? []) { transaction in
+                                TransactionRow(transaction: transaction)
+                            }
+                        }
                     }
                 }
+                .listStyle(InsetGroupedListStyle())
             }
-            .sheet(isPresented: $showingAddDataModal) {
-                AddTransactionDataView(isPresented: $showingAddDataModal, onImport: importTransactions)
+        }
+        .navigationTitle("Transactions")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingAddDataModal = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
-            .alert(isPresented: $showAlert) {
-                Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
-            }
+        }
+        .sheet(isPresented: $showingAddDataModal) {
+            AddTransactionDataView(isPresented: $showingAddDataModal, onImport: importTransactions)
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
         }
     }
     

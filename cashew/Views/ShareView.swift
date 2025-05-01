@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ShareView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     @State private var isImporting: Bool = false
     @State private var isExporting: Bool = false
     @State private var exportData: Data?
@@ -23,7 +23,7 @@ struct ShareView: View {
                 
                 VStack(spacing: 20) {
                     // Error Banner (if needed)
-                    if let error = bluetoothManager.error {
+                    if let error = dataManager.error {
                         ErrorBanner(message: error)
                     }
                     
@@ -135,8 +135,8 @@ struct ShareView: View {
             encoder.outputFormatting = .prettyPrinted
             encoder.dateEncodingStrategy = .iso8601 // Ensure dates are encoded properly
             
-            // Get the transactions from the BluetoothManager
-            let transactions = bluetoothManager.getAllTransactions()
+            // Get the transactions from the DataManager
+            let transactions = dataManager.getAllTransactions()
             exportData = try encoder.encode(transactions)
             isExporting = true
         } catch {
@@ -167,7 +167,7 @@ struct ShareView: View {
                     
                     // Decode the transactions from the JSON file
                     let transactions = try decoder.decode([FinanceTransaction].self, from: data)
-                    bluetoothManager.importTransactions(transactions)
+                    dataManager.importTransactions(transactions)
                     
                     alertTitle = "Import Successful"
                     alertMessage = "Successfully imported \(transactions.count) transactions"
@@ -284,9 +284,7 @@ struct JSONDocument: FileDocument {
     }
 }
 
-// Note: ErrorBanner is already defined in BluetoothDeviceListView.swift
-
 #Preview {
     ShareView()
-        .environmentObject(BluetoothManager())
+        .environmentObject(DataManager())
 }

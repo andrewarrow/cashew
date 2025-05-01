@@ -10,12 +10,12 @@ import UniformTypeIdentifiers
 
 @main
 struct cashewApp: App {
-    @StateObject private var bluetoothManager = BluetoothManager()
+    @StateObject private var dataManager = DataManager()
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(bluetoothManager)
+                .environmentObject(dataManager)
                 .onOpenURL { url in
                     handleIncomingURL(url)
                 }
@@ -32,7 +32,7 @@ struct cashewApp: App {
             let transactions = try decoder.decode([FinanceTransaction].self, from: data)
             
             // Import the transactions
-            bluetoothManager.importTransactions(transactions)
+            dataManager.importTransactions(transactions)
             
             // Show confirmation alert via NotificationCenter
             NotificationCenter.default.post(

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CategoryView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     @State private var showingAddCategorySheet = false
     @State private var editingCategory: Category? = nil
     @State private var showAlert = false
@@ -11,7 +11,7 @@ struct CategoryView: View {
     var body: some View {
         NavigationView {
             List {
-                ForEach(bluetoothManager.categories) { category in
+                ForEach(dataManager.categories) { category in
                     CategoryRow(category: category)
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -52,7 +52,7 @@ struct CategoryView: View {
     
     private func handleDelete(at indexSet: IndexSet) {
         for index in indexSet {
-            let category = bluetoothManager.categories[index]
+            let category = dataManager.categories[index]
             
             // Check if it's "Other" category - prevent deletion
             if category.name == "Other" {
@@ -63,7 +63,7 @@ struct CategoryView: View {
             }
             
             // Check if it's the last category
-            if bluetoothManager.categories.count <= 1 {
+            if dataManager.categories.count <= 1 {
                 alertTitle = "Cannot Delete"
                 alertMessage = "You must have at least one category."
                 showAlert = true
@@ -71,7 +71,7 @@ struct CategoryView: View {
             }
             
             // Delete the category
-            bluetoothManager.deleteCategory(id: category.id)
+            dataManager.deleteCategory(id: category.id)
         }
     }
 }
@@ -102,7 +102,7 @@ struct CategoryRow: View {
 }
 
 struct AddCategoryView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     @Binding var isPresented: Bool
     
     @State private var categoryName = ""
@@ -196,13 +196,13 @@ struct AddCategoryView: View {
     private func saveCategory() {
         let trimmedName = categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedName.isEmpty {
-            bluetoothManager.addCategory(name: trimmedName, icon: selectedIcon, color: selectedColor)
+            dataManager.addCategory(name: trimmedName, icon: selectedIcon, color: selectedColor)
         }
     }
 }
 
 struct EditCategoryView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     @Binding var isPresented: Bool
     let category: Category
     
@@ -322,7 +322,7 @@ struct EditCategoryView: View {
                     title: Text("Delete Category"),
                     message: Text("Are you sure you want to delete this category? All transactions in this category will be moved to 'Other'."),
                     primaryButton: .destructive(Text("Delete")) {
-                        bluetoothManager.deleteCategory(id: category.id)
+                        dataManager.deleteCategory(id: category.id)
                         isPresented = false
                     },
                     secondaryButton: .cancel()
@@ -334,7 +334,7 @@ struct EditCategoryView: View {
     private func updateCategory() {
         let trimmedName = categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedName.isEmpty {
-            bluetoothManager.updateCategory(
+            dataManager.updateCategory(
                 id: category.id,
                 name: trimmedName,
                 icon: selectedIcon,
@@ -343,12 +343,12 @@ struct EditCategoryView: View {
             
             // Update any transactions using the old category name
             if trimmedName != category.name {
-                for i in 0..<bluetoothManager.financeTransactions.count {
-                    if bluetoothManager.financeTransactions[i].category == category.name {
-                        bluetoothManager.financeTransactions[i].category = trimmedName
+                for i in 0..<dataManager.financeTransactions.count {
+                    if dataManager.financeTransactions[i].category == category.name {
+                        dataManager.financeTransactions[i].category = trimmedName
                     }
                 }
-                bluetoothManager.saveFinanceTransactions()
+                dataManager.saveFinanceTransactions()
             }
         }
     }
@@ -356,5 +356,5 @@ struct EditCategoryView: View {
 
 #Preview {
     CategoryView()
-        .environmentObject(BluetoothManager())
+        .environmentObject(DataManager())
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TransactionsView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     @State private var showingAddDataModal = false
     @State private var transactionText = ""
     @State private var showAlert = false
@@ -11,7 +11,7 @@ struct TransactionsView: View {
     var body: some View {
         NavigationView {
             VStack {
-                if bluetoothManager.financeTransactions.isEmpty {
+                if dataManager.financeTransactions.isEmpty {
                     // Empty state
                     VStack(spacing: 20) {
                         Spacer()
@@ -84,7 +84,7 @@ struct TransactionsView: View {
         let calendar = Calendar.current
         var result: [Date: [FinanceTransaction]] = [:]
         
-        for transaction in bluetoothManager.financeTransactions {
+        for transaction in dataManager.financeTransactions {
             // Create date with time components set to 0
             let dateComponents = calendar.dateComponents([.year, .month, .day], from: transaction.date)
             if let date = calendar.date(from: dateComponents) {
@@ -138,7 +138,7 @@ struct TransactionsView: View {
                     let category = determineCategory(from: description)
                     
                     // Add the transaction
-                    bluetoothManager.addFinanceTransaction(
+                    dataManager.addFinanceTransaction(
                         amount: amount,
                         description: description,
                         category: category,
@@ -183,7 +183,7 @@ struct TransactionsView: View {
 
 // Single transaction row
 struct TransactionRow: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     let transaction: FinanceTransaction
     @State private var showingCategoryPicker = false
     
@@ -240,7 +240,7 @@ struct TransactionRow: View {
     
     // Get icon based on the category model
     private var categoryIcon: String {
-        if let category = bluetoothManager.getCategory(byName: transaction.category) {
+        if let category = dataManager.getCategory(byName: transaction.category) {
             return category.icon
         } else {
             // Fallbacks based on category name if no corresponding Category object
@@ -265,7 +265,7 @@ struct TransactionRow: View {
     
     // Get color based on the category model
     private var categoryColor: Color {
-        if let category = bluetoothManager.getCategory(byName: transaction.category) {
+        if let category = dataManager.getCategory(byName: transaction.category) {
             return category.color
         } else {
             // Fallbacks based on category name if no corresponding Category object
@@ -289,14 +289,14 @@ struct TransactionRow: View {
 
 // View for picking a category for a transaction
 struct TransactionCategoryPickerView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     let transaction: FinanceTransaction
     @Binding var isPresented: Bool
     
     var body: some View {
         NavigationView {
             List {
-                ForEach(bluetoothManager.categories) { category in
+                ForEach(dataManager.categories) { category in
                     Button(action: {
                         updateTransactionCategory(to: category.name)
                         isPresented = false
@@ -336,7 +336,7 @@ struct TransactionCategoryPickerView: View {
     }
     
     private func updateTransactionCategory(to categoryName: String) {
-        bluetoothManager.updateFinanceTransaction(
+        dataManager.updateFinanceTransaction(
             id: transaction.id,
             category: categoryName
         )
@@ -403,5 +403,5 @@ struct AddTransactionDataView: View {
 
 #Preview {
     TransactionsView()
-        .environmentObject(BluetoothManager())
+        .environmentObject(DataManager())
 }

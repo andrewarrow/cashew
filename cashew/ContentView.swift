@@ -8,26 +8,26 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @EnvironmentObject var dataManager: DataManager
     
     var body: some View {
         TabView {
             ShareView()
-                .environmentObject(bluetoothManager)
+                .environmentObject(dataManager)
                 .tabItem {
                     Image(systemName: "square.and.arrow.up.on.square")
                     Text("Share")
                 }
             
             TransactionsView()
-                .environmentObject(bluetoothManager)
+                .environmentObject(dataManager)
                 .tabItem {
                     Image(systemName: "dollarsign.circle")
                     Text("Transactions")
                 }
             
             CategoryView()
-                .environmentObject(bluetoothManager)
+                .environmentObject(dataManager)
                 .tabItem {
                     Image(systemName: "tag.fill")
                     Text("Categories")
@@ -38,4 +38,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(DataManager())
 }

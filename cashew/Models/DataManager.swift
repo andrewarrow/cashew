@@ -197,13 +197,14 @@ class DataManager: ObservableObject {
                 let daysAgo = i * 2
                 let transactionDate = calendar.date(byAdding: .day, value: -daysAgo, to: currentDate) ?? currentDate
                 
-                // Create a transaction with some sample data
-                let amount = Double.random(in: 10...200)
+                // Create a transaction with some sample data (amount in pennies)
+                let amountInDollars = Double.random(in: 10...200)
+                let amountInPennies = Int(amountInDollars * 100)
                 let categories = ["Food", "Shopping", "Transportation", "Entertainment", "Utilities"]
                 let descriptions = ["Grocery store", "Restaurant", "Gas station", "Online purchase", "Coffee shop"]
                 
                 let transaction = FinanceTransaction(
-                    amount: amount,
+                    amount: amountInPennies,
                     description: descriptions[i % descriptions.count],
                     category: categories[i % categories.count],
                     date: transactionDate
@@ -314,7 +315,7 @@ class DataManager: ObservableObject {
     }
     
     // Add a new finance transaction
-    func addFinanceTransaction(amount: Double, description: String, category: String, date: Date = Date()) {
+    func addFinanceTransaction(amount: Int, description: String, category: String, date: Date = Date()) {
         let newTransaction = FinanceTransaction(
             amount: amount,
             description: description,
@@ -323,12 +324,13 @@ class DataManager: ObservableObject {
         )
         
         self.financeTransactions.append(newTransaction)
-        self.addDebugMessage("Added new finance transaction: $\(String(format: "%.2f", amount)) for \(description)")
+        let dollars = Double(amount) / 100.0
+        self.addDebugMessage("Added new finance transaction: $\(String(format: "%.2f", dollars)) for \(description)")
         self.saveFinanceTransactions()
     }
     
     // Update an existing finance transaction
-    func updateFinanceTransaction(id: UUID, amount: Double? = nil, description: String? = nil, category: String? = nil, date: Date? = nil) {
+    func updateFinanceTransaction(id: UUID, amount: Int? = nil, description: String? = nil, category: String? = nil, date: Date? = nil) {
         if let index = self.financeTransactions.firstIndex(where: { $0.id == id }) {
             var updatedTransaction = self.financeTransactions[index]
             
@@ -381,23 +383,25 @@ class DataManager: ObservableObject {
             // Randomize whether it's income or expense
             let isIncome = i % 10 == 0 // Make every 10th transaction income
             
-            // Create a transaction with random data
-            let amount = isIncome ? 
+            // Create a transaction with random data (amount in pennies)
+            let amountInDollars = isIncome ? 
                 Double.random(in: 500...3000) : // Income
                 Double.random(in: 5...200) * -1 // Expense (negative)
+            
+            let amountInPennies = Int(amountInDollars * 100)
             
             let category = isIncome ? "Income" : categories[i % (categories.count - 1)]
             let description = descriptions[i % descriptions.count]
             
             let transaction = FinanceTransaction(
-                amount: amount,
+                amount: amountInPennies,
                 description: description,
                 category: category,
                 date: transactionDate
             )
             
             self.financeTransactions.append(transaction)
-            self.addDebugMessage("Added sample transaction: \(isIncome ? "Income" : "Expense") of $\(String(format: "%.2f", abs(amount)))")
+            self.addDebugMessage("Added sample transaction: \(isIncome ? "Income" : "Expense") of $\(String(format: "%.2f", abs(amountInDollars)))")
         }
         
         // Save the transactions
@@ -441,7 +445,9 @@ class DataManager: ObservableObject {
         }.reduce(0) { $0 + $1.amount }
         
         if totalNewAmount != 0 {
-            let formattedAmount = currencyFormatter.string(from: NSNumber(value: abs(totalNewAmount))) ?? "$\(abs(totalNewAmount))"
+            // Convert pennies to dollars for display
+            let totalNewAmountInDollars = Double(totalNewAmount) / 100.0
+            let formattedAmount = currencyFormatter.string(from: NSNumber(value: abs(totalNewAmountInDollars))) ?? "$\(abs(totalNewAmountInDollars))"
             if totalNewAmount > 0 {
                 changes.append("Total income of \(formattedAmount) received from \(nameForChanges).")
             } else {

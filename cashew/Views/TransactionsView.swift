@@ -132,14 +132,17 @@ struct TransactionsView: View {
                 let description = descriptionComponents.joined(separator: " ")
                 
                 if let date = dateFormatter.date(from: dateString),
-                   let amount = Double(amountString) {
+                   let amountInDollars = Double(amountString) {
+                    
+                    // Convert dollars to pennies (cents)
+                    let amountInPennies = Int(amountInDollars * 100)
                     
                     // Determine the category based on description
                     let category = determineCategory(from: description)
                     
                     // Add the transaction
                     dataManager.addFinanceTransaction(
-                        amount: amount,
+                        amount: amountInPennies,
                         description: description,
                         category: category,
                         date: date
@@ -230,12 +233,13 @@ struct TransactionRow: View {
         }
     }
     
-    // Format currency amount
-    private func formatAmount(_ amount: Double) -> String {
+    // Format currency amount from pennies
+    private func formatAmount(_ amountInPennies: Int) -> String {
+        let amountInDollars = Double(amountInPennies) / 100.0
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencySymbol = "$"
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+        return formatter.string(from: NSNumber(value: amountInDollars)) ?? "$\(amountInDollars)"
     }
     
     // Get icon based on the category model

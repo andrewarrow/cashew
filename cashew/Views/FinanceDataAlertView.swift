@@ -175,8 +175,8 @@ struct ErrorBanner: View {
         financeData: FinanceData(
             senderName: "John's iPhone",
             transactions: [
-                FinanceTransaction(amount: 50.0, description: "Dinner", category: "Food"),
-                FinanceTransaction(amount: 25.0, description: "Movie", category: "Entertainment")
+                FinanceTransaction(amount: 5000, description: "Dinner", category: "Food"),
+                FinanceTransaction(amount: 2500, description: "Movie", category: "Entertainment")
             ]
         ),
         changeDescriptions: [

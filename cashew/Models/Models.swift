@@ -79,15 +79,15 @@ struct Category: Identifiable, Codable, Equatable {
     }
 }
 
-// Finance transaction entry with amount, description, category, and date
+// Finance transaction entry with amount in pennies, description, category, and date
 struct FinanceTransaction: Identifiable, Codable {
     let id: UUID
-    var amount: Double
+    var amount: Int // Amount in pennies (e.g., $10.25 would be stored as 1025)
     var description: String
     var category: String
     var date: Date
     
-    init(amount: Double = 0.0, description: String = "", category: String = "", date: Date = Date()) {
+    init(amount: Int = 0, description: String = "", category: String = "", date: Date = Date()) {
         self.id = UUID()
         self.amount = amount
         self.description = description

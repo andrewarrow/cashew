@@ -388,6 +388,47 @@ class BluetoothManager: NSObject, ObservableObject {
         }
     }
     
+    // Get all transactions - used for export
+    func getAllTransactions() -> [FinanceTransaction] {
+        return self.financeTransactions
+    }
+    
+    // Import transactions from external source
+    func importTransactions(_ transactions: [FinanceTransaction]) {
+        let currentTransactions = self.financeTransactions
+        var importedTransactions = transactions
+        
+        // Generate change descriptions for history
+        let changes = self.generateFinanceChanges(
+            oldTransactions: currentTransactions, 
+            newTransactions: importedTransactions, 
+            senderName: "Imported Data"
+        )
+        
+        // Add the changes to history if there are any
+        if !changes.isEmpty {
+            self.addHistoryEntry(senderName: "Imported Data", changes: changes)
+        }
+        
+        // Update transactions on main thread
+        self.updateOnMainThread {
+            // Merge transactions, avoiding duplicates by ID
+            for transaction in importedTransactions {
+                if !self.financeTransactions.contains(where: { $0.id == transaction.id }) {
+                    self.financeTransactions.append(transaction)
+                }
+            }
+            
+            // Sort transactions by date (newest first)
+            self.financeTransactions.sort { $0.date > $1.date }
+            
+            // Save to persistent storage
+            self.saveFinanceTransactions()
+            
+            self.addDebugMessage("Imported \(importedTransactions.count) transactions")
+        }
+    }
+    
     // Save history entries to UserDefaults
     func saveHistoryEntries() {
         let encoder = JSONEncoder()

@@ -8,15 +8,15 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var bluetoothManager = BluetoothManager()
+    @EnvironmentObject var bluetoothManager: BluetoothManager
     
     var body: some View {
         TabView {
-            BluetoothDeviceListView()
+            ShareView()
                 .environmentObject(bluetoothManager)
                 .tabItem {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                    Text("Devices")
+                    Image(systemName: "square.and.arrow.up.on.square")
+                    Text("Share")
                 }
             
             TransactionsView()

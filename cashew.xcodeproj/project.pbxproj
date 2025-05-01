@@ -10,9 +10,22 @@
 		007876172DC4011900D3E1F9 /* cashew.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = cashew.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		009C7C902DC4113300797CED /* Exceptions for "cashew" folder in "cashew" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 007876162DC4011900D3E1F9 /* cashew */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		007876192DC4011900D3E1F9 /* cashew */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				009C7C902DC4113300797CED /* Exceptions for "cashew" folder in "cashew" target */,
+			);
 			path = cashew;
 			sourceTree = "<group>";
 		};
@@ -254,7 +267,8 @@
 				DEVELOPMENT_ASSET_PATHS = "\"cashew/Preview Content\"";
 				DEVELOPMENT_TEAM = 755R3VBZ84;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = cashew/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -283,7 +297,8 @@
 				DEVELOPMENT_ASSET_PATHS = "\"cashew/Preview Content\"";
 				DEVELOPMENT_TEAM = 755R3VBZ84;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = cashew/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

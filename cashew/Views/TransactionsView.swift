@@ -1,0 +1,328 @@
+import SwiftUI
+
+struct TransactionsView: View {
+    @EnvironmentObject var bluetoothManager: BluetoothManager
+    @State private var showingAddDataModal = false
+    @State private var transactionText = ""
+    @State private var showAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if bluetoothManager.financeTransactions.isEmpty {
+                    // Empty state
+                    VStack(spacing: 20) {
+                        Spacer()
+                        
+                        Image(systemName: "dollarsign.circle")
+                            .font(.system(size: 70))
+                            .foregroundColor(.gray.opacity(0.7))
+                        
+                        Text("No Transactions Yet")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("Add transaction data to get started")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button {
+                            showingAddDataModal = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Add Transaction Data")
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top, 20)
+                        
+                        Spacer()
+                    }
+                } else {
+                    // List of transactions
+                    List {
+                        ForEach(transactionsByDate.keys.sorted(by: >), id: \.self) { date in
+                            Section(header: Text(formatDate(date))) {
+                                ForEach(transactionsByDate[date] ?? []) { transaction in
+                                    TransactionRow(transaction: transaction)
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(InsetGroupedListStyle())
+                }
+            }
+            .navigationTitle("Transactions")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAddDataModal = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddDataModal) {
+                AddTransactionDataView(isPresented: $showingAddDataModal, onImport: importTransactions)
+            }
+            .alert(isPresented: $showAlert) {
+                Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            }
+        }
+    }
+    
+    // Group transactions by date
+    private var transactionsByDate: [Date: [FinanceTransaction]] {
+        let calendar = Calendar.current
+        var result: [Date: [FinanceTransaction]] = [:]
+        
+        for transaction in bluetoothManager.financeTransactions {
+            // Create date with time components set to 0
+            let dateComponents = calendar.dateComponents([.year, .month, .day], from: transaction.date)
+            if let date = calendar.date(from: dateComponents) {
+                if result[date] == nil {
+                    result[date] = []
+                }
+                result[date]?.append(transaction)
+            }
+        }
+        
+        // Sort transactions within each day by amount
+        for (date, transactions) in result {
+            result[date] = transactions.sorted(by: { $0.amount > $1.amount })
+        }
+        
+        return result
+    }
+    
+    // Format date for section headers
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+    
+    // Import transactions from text
+    private func importTransactions(_ text: String) {
+        let lines = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        var importedCount = 0
+        
+        for line in lines {
+            let components = line.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: " ")
+            if components.count >= 3 {
+                // Extract the date
+                let dateString = components[0]
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "MM/dd/yyyy"
+                
+                // Extract the amount
+                let amountString = components[1].replacingOccurrences(of: ",", with: "")
+                
+                // Extract the description (everything after amount)
+                let descriptionComponents = Array(components[2...])
+                let description = descriptionComponents.joined(separator: " ")
+                
+                if let date = dateFormatter.date(from: dateString),
+                   let amount = Double(amountString) {
+                    
+                    // Determine the category based on description
+                    let category = determineCategory(from: description)
+                    
+                    // Add the transaction
+                    bluetoothManager.addFinanceTransaction(
+                        amount: amount,
+                        description: description,
+                        category: category,
+                        date: date
+                    )
+                    
+                    importedCount += 1
+                }
+            }
+        }
+        
+        // Show success or failure alert
+        if importedCount > 0 {
+            alertTitle = "Import Successful"
+            alertMessage = "Imported \(importedCount) transactions."
+        } else {
+            alertTitle = "Import Failed"
+            alertMessage = "No valid transactions found. Please check the format."
+        }
+        showAlert = true
+    }
+    
+    // Simple logic to determine a category based on the transaction description
+    private func determineCategory(from description: String) -> String {
+        let lowercased = description.lowercased()
+        
+        if lowercased.contains("trader") || lowercased.contains("grocery") {
+            return "Groceries"
+        } else if lowercased.contains("fil") || lowercased.contains("restaurant") {
+            return "Dining"
+        } else if lowercased.contains("game") || lowercased.contains("bingo") {
+            return "Entertainment"
+        } else if lowercased.contains("equinox") {
+            return "Fitness"
+        } else if lowercased.contains("dr") {
+            return "Healthcare"
+        }
+        
+        return "Other"
+    }
+}
+
+// Single transaction row
+struct TransactionRow: View {
+    let transaction: FinanceTransaction
+    
+    var body: some View {
+        HStack {
+            // Category icon
+            Image(systemName: categoryIcon)
+                .foregroundColor(categoryColor)
+                .font(.system(size: 24))
+                .frame(width: 32, height: 32)
+                .background(categoryColor.opacity(0.1))
+                .cornerRadius(8)
+            
+            // Description and date
+            VStack(alignment: .leading, spacing: 4) {
+                Text(transaction.description)
+                    .fontWeight(.medium)
+                
+                Text(transaction.category)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Amount
+            Text(formatAmount(transaction.amount))
+                .fontWeight(.semibold)
+                .foregroundColor(transaction.amount >= 0 ? .green : .red)
+        }
+        .padding(.vertical, 8)
+    }
+    
+    // Format currency amount
+    private func formatAmount(_ amount: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "$"
+        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+    
+    // Choose icon based on category
+    private var categoryIcon: String {
+        switch transaction.category.lowercased() {
+        case "groceries":
+            return "cart.fill"
+        case "dining":
+            return "fork.knife"
+        case "entertainment":
+            return "gamecontroller.fill"
+        case "fitness":
+            return "figure.walk"
+        case "healthcare":
+            return "heart.fill"
+        case "income":
+            return "arrow.down.circle.fill"
+        default:
+            return "dollarsign.circle.fill"
+        }
+    }
+    
+    // Choose color based on category
+    private var categoryColor: Color {
+        switch transaction.category.lowercased() {
+        case "groceries":
+            return .blue
+        case "dining":
+            return .orange
+        case "entertainment":
+            return .purple
+        case "fitness":
+            return .green
+        case "healthcare":
+            return .red
+        case "income":
+            return .green
+        default:
+            return .gray
+        }
+    }
+}
+
+// Modal view for adding transaction data
+struct AddTransactionDataView: View {
+    @Binding var isPresented: Bool
+    @State private var transactionText = ""
+    var onImport: (String) -> Void
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Text("Paste your transaction data below. Each line should be in the format:")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+                    .multilineTextAlignment(.center)
+                
+                Text("MM/DD/YYYY -XX.XX Description")
+                    .font(.system(.subheadline, design: .monospaced))
+                    .padding(.bottom)
+                
+                // Sample text
+                Text("Example: 04/24/2025 -16.75 7-eleven")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom)
+                
+                // Text area for input
+                TextEditor(text: $transactionText)
+                    .padding(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.horizontal)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Add Transaction Data")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Import") {
+                        onImport(transactionText)
+                        isPresented = false
+                    }
+                    .disabled(transactionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    TransactionsView()
+        .environmentObject(BluetoothManager())
+}

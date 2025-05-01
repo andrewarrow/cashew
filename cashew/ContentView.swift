@@ -11,8 +11,21 @@ struct ContentView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
     
     var body: some View {
-        BluetoothDeviceListView()
-            .environmentObject(bluetoothManager)
+        TabView {
+            BluetoothDeviceListView()
+                .environmentObject(bluetoothManager)
+                .tabItem {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                    Text("Devices")
+                }
+            
+            TransactionsView()
+                .environmentObject(bluetoothManager)
+                .tabItem {
+                    Image(systemName: "dollarsign.circle")
+                    Text("Transactions")
+                }
+        }
     }
 }
 

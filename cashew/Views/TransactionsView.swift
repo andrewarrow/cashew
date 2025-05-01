@@ -7,6 +7,7 @@ struct TransactionsView: View {
     @State private var showAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
+    @State private var currentDate: Date? = nil
     
     var body: some View {
         NavigationView {
@@ -47,17 +48,45 @@ struct TransactionsView: View {
                         Spacer()
                     }
                 } else {
-                    // List of transactions
-                    List {
-                        ForEach(transactionsByDate.keys.sorted(by: >), id: \.self) { date in
-                            Section(header: Text(formatDate(date))) {
-                                ForEach(transactionsByDate[date] ?? []) { transaction in
-                                    TransactionRow(transaction: transaction)
-                                }
+                    // Day navigation and transactions for the selected date
+                    VStack {
+                        // Day navigation bar
+                        HStack {
+                            Button(action: {
+                                navigateToPreviousDay()
+                            }) {
+                                Image(systemName: "chevron.left")
+                                    .imageScale(.large)
+                            }
+                            .disabled(!hasPreviousDay)
+                            
+                            Spacer()
+                            
+                            if let date = currentDate {
+                                Text(formatDate(date))
+                                    .font(.headline)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                navigateToNextDay()
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .imageScale(.large)
+                            }
+                            .disabled(!hasNextDay)
+                        }
+                        .padding()
+                        
+                        // List of transactions for the current date
+                        List {
+                            ForEach(transactionsForCurrentDate) { transaction in
+                                TransactionRow(transaction: transaction)
                             }
                         }
+                        .listStyle(InsetGroupedListStyle())
                     }
-                    .listStyle(InsetGroupedListStyle())
                 }
             }
             .navigationTitle("Transactions")
@@ -76,31 +105,66 @@ struct TransactionsView: View {
             .alert(isPresented: $showAlert) {
                 Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
             }
+            .onAppear {
+                // Initialize to the most recent date when the view appears
+                if currentDate == nil {
+                    currentDate = availableDates.first
+                }
+            }
         }
     }
     
-    // Group transactions by date
-    private var transactionsByDate: [Date: [FinanceTransaction]] {
+    // Get all distinct dates in the dataset, sorted newest first
+    private var availableDates: [Date] {
         let calendar = Calendar.current
-        var result: [Date: [FinanceTransaction]] = [:]
+        var dates: Set<Date> = []
         
         for transaction in dataManager.financeTransactions {
-            // Create date with time components set to 0
             let dateComponents = calendar.dateComponents([.year, .month, .day], from: transaction.date)
             if let date = calendar.date(from: dateComponents) {
-                if result[date] == nil {
-                    result[date] = []
-                }
-                result[date]?.append(transaction)
+                dates.insert(date)
             }
         }
         
-        // Sort transactions within each day by amount
-        for (date, transactions) in result {
-            result[date] = transactions.sorted(by: { $0.amount > $1.amount })
-        }
+        return dates.sorted(by: >)
+    }
+    
+    // Get transactions for the current date
+    private var transactionsForCurrentDate: [FinanceTransaction] {
+        guard let currentDate = currentDate else { return [] }
         
-        return result
+        let calendar = Calendar.current
+        return dataManager.financeTransactions.filter { transaction in
+            let transactionDateComponents = calendar.dateComponents([.year, .month, .day], from: transaction.date)
+            let currentDateComponents = calendar.dateComponents([.year, .month, .day], from: currentDate)
+            return transactionDateComponents.year == currentDateComponents.year &&
+                   transactionDateComponents.month == currentDateComponents.month &&
+                   transactionDateComponents.day == currentDateComponents.day
+        }.sorted(by: { $0.amount > $1.amount })
+    }
+    
+    // Check if there is a previous day available
+    private var hasPreviousDay: Bool {
+        guard let currentDate = currentDate, let index = availableDates.firstIndex(of: currentDate) else { return false }
+        return index < availableDates.count - 1
+    }
+    
+    // Check if there is a next day available
+    private var hasNextDay: Bool {
+        guard let currentDate = currentDate, let index = availableDates.firstIndex(of: currentDate) else { return false }
+        return index > 0
+    }
+    
+    // Navigate to the previous day
+    private func navigateToPreviousDay() {
+        guard let currentDate = currentDate, let index = availableDates.firstIndex(of: currentDate), index < availableDates.count - 1 else { return }
+        self.currentDate = availableDates[index + 1]
+    }
+    
+    // Navigate to the next day
+    private func navigateToNextDay() {
+        guard let currentDate = currentDate, let index = availableDates.firstIndex(of: currentDate), index > 0 else { return }
+        self.currentDate = availableDates[index - 1]
     }
     
     // Format date for section headers

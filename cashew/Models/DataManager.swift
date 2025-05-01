@@ -236,6 +236,40 @@ class DataManager: ObservableObject {
     func importTransactions(_ transactions: [FinanceTransaction]) {
         let currentTransactions = self.financeTransactions
         var importedTransactions = transactions
+        var newCategoriesFound = [String]()
+        
+        // Check for new categories and create them if needed
+        for transaction in importedTransactions {
+            let categoryName = transaction.category
+            // Skip if it's an empty category
+            if categoryName.isEmpty {
+                continue
+            }
+            
+            // Check if category exists
+            if getCategory(byName: categoryName) == nil {
+                // Category doesn't exist, create a new one
+                // Use a default icon and a random color from our supported colors
+                let defaultIcon = "dollarsign.circle.fill"
+                let colors: [Color] = [.blue, .red, .green, .orange, .purple, .yellow, .pink]
+                let randomColor = colors.randomElement() ?? .gray
+                
+                // Add the new category
+                let newCategory = Category(name: categoryName, icon: defaultIcon, color: randomColor)
+                self.categories.append(newCategory)
+                
+                // Track it for logging
+                newCategoriesFound.append(categoryName)
+                
+                self.addDebugMessage("Created new category: \(categoryName) during import")
+            }
+        }
+        
+        // Save any new categories
+        if !newCategoriesFound.isEmpty {
+            self.saveCategories()
+            self.addDebugMessage("Created \(newCategoriesFound.count) new categories during import: \(newCategoriesFound.joined(separator: ", "))")
+        }
         
         // Generate change descriptions for history
         let changes = self.generateFinanceChanges(

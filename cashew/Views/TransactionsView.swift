@@ -238,22 +238,7 @@ struct TransactionsView: View {
         showAlert = true
     }
     
-    // Simple logic to determine a category based on the transaction description
     private func determineCategory(from description: String) -> String {
-        let lowercased = description.lowercased()
-        
-        if lowercased.contains("trader") || lowercased.contains("grocery") {
-            return "Groceries"
-        } else if lowercased.contains("fil") || lowercased.contains("restaurant") {
-            return "Dining"
-        } else if lowercased.contains("game") || lowercased.contains("bingo") {
-            return "Entertainment"
-        } else if lowercased.contains("equinox") {
-            return "Fitness"
-        } else if lowercased.contains("dr") {
-            return "Healthcare"
-        }
-        
         return ""
     }
 }

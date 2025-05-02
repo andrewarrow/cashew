@@ -352,59 +352,6 @@ class DataManager: ObservableObject {
         }
     }
     
-    // Add sample finance transactions
-    func populateSampleFinanceTransactions() {
-        // Clear existing transactions
-        self.financeTransactions.removeAll()
-        
-        // Sample categories
-        let categories = ["Food", "Shopping", "Transportation", "Entertainment", "Utilities", "Healthcare", "Rent", "Income"]
-        
-        // Sample descriptions
-        let descriptions = [
-            "Grocery store", "Restaurant meal", "Online shopping", "Gas station", 
-            "Movie tickets", "Electric bill", "Water bill", "Doctor visit", 
-            "Monthly rent", "Salary deposit", "Coffee shop", "Electronics store"
-        ]
-        
-        // Generate 10 random transactions
-        let currentDate = Date()
-        let calendar = Calendar.current
-        
-        for i in 0..<12 {
-            // Create dates going back over the past month
-            let daysAgo = i * 3
-            let transactionDate = calendar.date(byAdding: .day, value: -daysAgo, to: currentDate) ?? currentDate
-            
-            // Randomize whether it's income or expense
-            let isIncome = i % 10 == 0 // Make every 10th transaction income
-            
-            // Create a transaction with random data (amount in pennies)
-            let amountInDollars = isIncome ? 
-                Double.random(in: 500...3000) : // Income
-                Double.random(in: 5...200) * -1 // Expense (negative)
-            
-            let amountInPennies = Int(amountInDollars * 100)
-            
-            let category = isIncome ? "Income" : categories[i % (categories.count - 1)]
-            let description = descriptions[i % descriptions.count]
-            
-            let transaction = FinanceTransaction(
-                amount: amountInPennies,
-                description: description,
-                category: category,
-                date: transactionDate
-            )
-            
-            self.financeTransactions.append(transaction)
-            self.addDebugMessage("Added sample transaction: \(isIncome ? "Income" : "Expense") of $\(String(format: "%.2f", abs(amountInDollars)))")
-        }
-        
-        // Save the transactions
-        self.saveFinanceTransactions()
-        self.addDebugMessage("Sample finance transactions populated successfully")
-    }
-    
     // Generate descriptions of what changed between the old and new finance transactions
     func generateFinanceChanges(oldTransactions: [FinanceTransaction], newTransactions: [FinanceTransaction], senderName: String) -> [String] {
         var changes = [String]()

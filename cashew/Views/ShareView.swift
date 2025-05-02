@@ -4,8 +4,6 @@ import UniformTypeIdentifiers
 struct ShareView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var isImporting: Bool = false
-    @State private var isExporting: Bool = false
-    @State private var exportData: Data?
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
@@ -74,14 +72,6 @@ struct ShareView: View {
             ) { result in
                 handleImport(result: result)
             }
-            .fileExporter(
-                isPresented: $isExporting,
-                document: JSONDocument(data: exportData ?? Data()),
-                contentType: UTType.json,
-                defaultFilename: "cashew_transactions.json"
-            ) { result in
-                handleExport(result: result)
-            }
             .alert(isPresented: $showAlert) {
                 Alert(
                     title: Text(alertTitle),
@@ -131,14 +121,37 @@ struct ShareView: View {
     private func prepareAndExport() {
         // Create JSON from transactions
         do {
+            // Create JSON encoder
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
             encoder.dateEncodingStrategy = .iso8601 // Ensure dates are encoded properly
             
             // Get the transactions from the DataManager
             let transactions = dataManager.getAllTransactions()
-            exportData = try encoder.encode(transactions)
-            isExporting = true
+            let jsonData = try encoder.encode(transactions)
+            
+            // Get Documents directory for better sharing support
+            let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentDirectory.appendingPathComponent("cashew_transactions.json")
+            
+            // Write to the file
+            try jsonData.write(to: fileURL)
+            
+            // Create a shareable text string instead of directly sharing the file
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+            
+            // Set up the share sheet
+            let items: [Any] = [jsonString]
+            let ac = UIActivityViewController(activityItems: items, applicationActivities: nil)
+            
+            // Find the current UIWindow to present the share sheet
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                // Present activity controller
+                DispatchQueue.main.async {
+                    rootVC.present(ac, animated: true)
+                }
+            }
         } catch {
             alertTitle = "Export Error"
             alertMessage = "Failed to prepare data: \(error.localizedDescription)"
@@ -190,18 +203,6 @@ struct ShareView: View {
         }
     }
     
-    private func handleExport(result: Result<URL, Error>) {
-        switch result {
-        case .success(let url):
-            alertTitle = "Export Successful"
-            alertMessage = "Your transactions have been exported to \(url.lastPathComponent)"
-            showAlert = true
-        case .failure(let error):
-            alertTitle = "Export Error"
-            alertMessage = error.localizedDescription
-            showAlert = true
-        }
-    }
 }
 
 // Card layout for share actions
@@ -262,27 +263,6 @@ struct ShareActionCard: View {
     }
 }
 
-// Document for exporting JSON
-struct JSONDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [UTType.json] }
-    
-    var data: Data
-    
-    init(data: Data) {
-        self.data = data
-    }
-    
-    init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        self.data = data
-    }
-    
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        return FileWrapper(regularFileWithContents: data)
-    }
-}
 
 #Preview {
     ShareView()

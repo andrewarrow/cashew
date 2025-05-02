@@ -184,35 +184,12 @@ class DataManager: ObservableObject {
         }
     }
     
-    // Initialize finance transactions with sample data
+    // Initialize finance transactions (empty for new users)
     private func initializeFinanceTransactions() {
-        // Only initialize if we don't have transactions yet
+        // Simply ensure that financeTransactions is initialized as an empty array
         if self.financeTransactions.isEmpty {
-            // Add a few sample transactions
-            let currentDate = Date()
-            let calendar = Calendar.current
-            
-            for i in 0..<5 {
-                // Create dates going back a few days
-                let daysAgo = i * 2
-                let transactionDate = calendar.date(byAdding: .day, value: -daysAgo, to: currentDate) ?? currentDate
-                
-                // Create a transaction with some sample data (amount in pennies)
-                let amountInDollars = Double.random(in: 10...200)
-                let amountInPennies = Int(amountInDollars * 100)
-                let categories = ["Food", "Shopping", "Transportation", "Entertainment", "Utilities"]
-                let descriptions = ["Grocery store", "Restaurant", "Gas station", "Online purchase", "Coffee shop"]
-                
-                let transaction = FinanceTransaction(
-                    amount: amountInPennies,
-                    description: descriptions[i % descriptions.count],
-                    category: categories[i % categories.count],
-                    date: transactionDate
-                )
-                
-                self.financeTransactions.append(transaction)
-            }
-            self.addDebugMessage("Initialized 5 sample finance transactions")
+            // New users start with zero transactions
+            self.addDebugMessage("Initialized with zero finance transactions")
             self.saveFinanceTransactions()
         }
     }

@@ -125,30 +125,40 @@ struct ShareView: View {
     }
     
     private func prepareAndExport() {
-        // Create JSON from transactions
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601 // Ensure dates are encoded properly
-            
-            // Get the transactions from the DataManager
-            let transactions = dataManager.getAllTransactions()
-            let jsonData = try encoder.encode(transactions)
-            
-            // Create a temporary file URL
-            let temporaryDirectoryURL = FileManager.default.temporaryDirectory
-            let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("cashew_transactions.json")
-            
-            // Write the data to the temporary file
-            try jsonData.write(to: temporaryFileURL)
-            
-            // Set the share items and present the share sheet
-            shareItems = [temporaryFileURL]
-            showShareSheet = true
-        } catch {
-            alertTitle = "Export Error"
-            alertMessage = "Failed to prepare data: \(error.localizedDescription)"
-            showAlert = true
+        // Show loading indicator if needed
+        
+        // Process in background thread
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = .prettyPrinted
+                encoder.dateEncodingStrategy = .iso8601 // Ensure dates are encoded properly
+                
+                // Get the transactions from the DataManager
+                let transactions = self.dataManager.getAllTransactions()
+                let jsonData = try encoder.encode(transactions)
+                
+                // Create a temporary file URL
+                let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+                let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("cashew_transactions.json")
+                
+                // Write the data to the temporary file
+                try jsonData.write(to: temporaryFileURL)
+                
+                // Return to main thread to update UI
+                DispatchQueue.main.async {
+                    // Set the share items and present the share sheet
+                    self.shareItems = [temporaryFileURL]
+                    self.showShareSheet = true
+                }
+            } catch {
+                // Return to main thread to show error
+                DispatchQueue.main.async {
+                    self.alertTitle = "Export Error"
+                    self.alertMessage = "Failed to prepare data: \(error.localizedDescription)"
+                    self.showAlert = true
+                }
+            }
         }
     }
     

@@ -255,42 +255,39 @@ struct TransactionRow: View {
     @State private var showingCategoryPicker = false
     
     var body: some View {
-        HStack {
-            // Category icon based on the actual Category object
-            Image(systemName: categoryIcon)
-                .foregroundColor(categoryColor)
-                .font(.system(size: 24))
-                .frame(width: 32, height: 32)
-                .background(categoryColor.opacity(0.1))
-                .cornerRadius(8)
-            
-            // Description and date
-            VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.description)
-                    .fontWeight(.medium)
+        Button(action: {
+            showingCategoryPicker = true
+        }) {
+            HStack {
+                // Category icon based on the actual Category object
+                Image(systemName: categoryIcon)
+                    .foregroundColor(categoryColor)
+                    .font(.system(size: 24))
+                    .frame(width: 32, height: 32)
+                    .background(categoryColor.opacity(0.1))
+                    .cornerRadius(8)
                 
-                Text(transaction.category)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Amount
-            Text(formatAmount(transaction.amount))
-                .fontWeight(.semibold)
-                .foregroundColor(transaction.amount >= 0 ? .green : .red)
+                // Description and date
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(transaction.description)
+                        .fontWeight(.medium)
+                    
+                    Text(transaction.category)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 
-            // Add an edit button
-            Button(action: {
-                showingCategoryPicker = true
-            }) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.gray)
-                    .font(.footnote)
+                Spacer()
+                
+                // Amount
+                Text(formatAmount(transaction.amount))
+                    .fontWeight(.semibold)
+                    .foregroundColor(transaction.amount >= 0 ? .green : .red)
             }
-            .buttonStyle(BorderlessButtonStyle())
+            .contentShape(Rectangle())
+            .foregroundColor(.primary)
         }
+        .buttonStyle(PlainButtonStyle())
         .padding(.vertical, 8)
         .sheet(isPresented: $showingCategoryPicker) {
             TransactionCategoryPickerView(transaction: transaction, isPresented: $showingCategoryPicker)

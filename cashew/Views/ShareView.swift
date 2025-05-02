@@ -1,14 +1,15 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 struct ShareView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var isImporting: Bool = false
-    @State private var isExporting: Bool = false
-    @State private var exportData: Data?
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
+    @State private var showShareSheet: Bool = false
+    @State private var shareItems: [Any] = []
     
     // For handling app open with URL
     @State private var importObserver: NSObjectProtocol?
@@ -74,13 +75,8 @@ struct ShareView: View {
             ) { result in
                 handleImport(result: result)
             }
-            .fileExporter(
-                isPresented: $isExporting,
-                document: JSONDocument(data: exportData ?? Data()),
-                contentType: UTType.json,
-                defaultFilename: "cashew_transactions.json"
-            ) { result in
-                handleExport(result: result)
+            .sheet(isPresented: $showShareSheet) {
+                ShareSheet(items: shareItems)
             }
             .alert(isPresented: $showAlert) {
                 Alert(
@@ -137,8 +133,18 @@ struct ShareView: View {
             
             // Get the transactions from the DataManager
             let transactions = dataManager.getAllTransactions()
-            exportData = try encoder.encode(transactions)
-            isExporting = true
+            let jsonData = try encoder.encode(transactions)
+            
+            // Create a temporary file URL
+            let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+            let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("cashew_transactions.json")
+            
+            // Write the data to the temporary file
+            try jsonData.write(to: temporaryFileURL)
+            
+            // Set the share items and present the share sheet
+            shareItems = [temporaryFileURL]
+            showShareSheet = true
         } catch {
             alertTitle = "Export Error"
             alertMessage = "Failed to prepare data: \(error.localizedDescription)"
@@ -190,18 +196,6 @@ struct ShareView: View {
         }
     }
     
-    private func handleExport(result: Result<URL, Error>) {
-        switch result {
-        case .success(let url):
-            alertTitle = "Export Successful"
-            alertMessage = "Your transactions have been exported to \(url.lastPathComponent)"
-            showAlert = true
-        case .failure(let error):
-            alertTitle = "Export Error"
-            alertMessage = error.localizedDescription
-            showAlert = true
-        }
-    }
 }
 
 // Card layout for share actions
@@ -262,25 +256,17 @@ struct ShareActionCard: View {
     }
 }
 
-// Document for exporting JSON
-struct JSONDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [UTType.json] }
+// Share sheet for iOS
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
     
-    var data: Data
-    
-    init(data: Data) {
-        self.data = data
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        return controller
     }
     
-    init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        self.data = data
-    }
-    
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        return FileWrapper(regularFileWithContents: data)
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
+        // No updates needed
     }
 }
 

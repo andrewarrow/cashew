@@ -59,14 +59,6 @@ class DataManager: ObservableObject {
         if self.categories.isEmpty {
             let defaultCategories = [
                 Category(name: "Food", icon: "cart.fill", color: .blue),
-                Category(name: "Dining", icon: "fork.knife", color: .orange),
-                Category(name: "Entertainment", icon: "gamecontroller.fill", color: .purple),
-                Category(name: "Shopping", icon: "bag.fill", color: .green),
-                Category(name: "Transportation", icon: "car.fill", color: .red),
-                Category(name: "Utilities", icon: "bolt.fill", color: .yellow),
-                Category(name: "Healthcare", icon: "heart.fill", color: .pink),
-                Category(name: "Income", icon: "arrow.down.circle.fill", color: .green),
-                Category(name: "Other", icon: "dollarsign.circle.fill", color: .gray)
             ]
             
             self.categories = defaultCategories

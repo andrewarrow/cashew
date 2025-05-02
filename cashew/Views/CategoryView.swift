@@ -11,7 +11,7 @@ struct CategoryView: View {
     var body: some View {
         NavigationView {
             List {
-                ForEach(dataManager.categories) { category in
+                ForEach(dataManager.categories.sorted(by: { $0.name < $1.name })) { category in
                     CategoryRow(category: category)
                         .contentShape(Rectangle())
                         .onTapGesture {

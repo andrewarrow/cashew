@@ -140,7 +140,17 @@ struct TransactionsView: View {
             return transactionDateComponents.year == currentDateComponents.year &&
                    transactionDateComponents.month == currentDateComponents.month &&
                    transactionDateComponents.day == currentDateComponents.day
-        }.sorted(by: { $0.amount > $1.amount })
+        }.sorted(by: { 
+            // Sort uncategorized transactions first (empty or nil category)
+            if $0.category.isEmpty && !$1.category.isEmpty {
+                return true
+            } else if !$0.category.isEmpty && $1.category.isEmpty {
+                return false
+            } else {
+                // Then sort by amount (high to low)
+                return $0.amount > $1.amount
+            }
+        })
     }
     
     // Check if there is a previous day available

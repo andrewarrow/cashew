@@ -37,14 +37,11 @@ class DataManager: ObservableObject {
     public var deviceCustomName: String = UIDevice.current.name
     
     init() {
-        // Initialize default categories
-        initializeDefaultCategories()
+        // Load saved categories first
+        loadCategories()
         
         // Load saved finance transactions
         loadFinanceTransactions()
-        
-        // Load saved categories
-        loadCategories()
         
         // Load saved history entries
         loadHistoryEntries()
@@ -126,18 +123,14 @@ class DataManager: ObservableObject {
     
     // Delete a category
     func deleteCategory(id: UUID) {
-        // Only delete if it's not the last category and not "Other"
+        // Only delete if it's not the last category
         if categories.count > 1, 
-           let index = categories.firstIndex(where: { $0.id == id }),
-           categories[index].name != "Other" {
+           let index = categories.firstIndex(where: { $0.id == id }) {
             
-            // Get the "Other" category to reassign transactions
-            let otherCategory = categories.first(where: { $0.name == "Other" })?.name ?? "Other"
-            
-            // Update any transactions using this category to "Other"
+            // Update any transactions using this category to empty/null
             for i in 0..<financeTransactions.count {
                 if financeTransactions[i].category == categories[index].name {
-                    financeTransactions[i].category = otherCategory
+                    financeTransactions[i].category = ""
                 }
             }
             

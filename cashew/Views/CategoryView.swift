@@ -54,14 +54,6 @@ struct CategoryView: View {
         for index in indexSet {
             let category = dataManager.categories[index]
             
-            // Check if it's "Other" category - prevent deletion
-            if category.name == "Other" {
-                alertTitle = "Cannot Delete"
-                alertMessage = "The 'Other' category cannot be deleted."
-                showAlert = true
-                return
-            }
-            
             // Check if it's the last category
             if dataManager.categories.count <= 1 {
                 alertTitle = "Cannot Delete"
@@ -284,18 +276,16 @@ struct EditCategoryView: View {
                     .padding(.vertical, 5)
                 }
                 
-                // Only show delete option if it's not the "Other" category
-                if category.name != "Other" {
-                    Section {
-                        Button(action: {
-                            showDeleteAlert = true
-                        }) {
-                            HStack {
-                                Spacer()
-                                Text("Delete Category")
-                                    .foregroundColor(.red)
-                                Spacer()
-                            }
+                // Show delete option for all categories
+                Section {
+                    Button(action: {
+                        showDeleteAlert = true
+                    }) {
+                        HStack {
+                            Spacer()
+                            Text("Delete Category")
+                                .foregroundColor(.red)
+                            Spacer()
                         }
                     }
                 }
@@ -320,7 +310,7 @@ struct EditCategoryView: View {
             .alert(isPresented: $showDeleteAlert) {
                 Alert(
                     title: Text("Delete Category"),
-                    message: Text("Are you sure you want to delete this category? All transactions in this category will be moved to 'Other'."),
+                    message: Text("Are you sure you want to delete this category? All transactions in this category will be reset to empty category."),
                     primaryButton: .destructive(Text("Delete")) {
                         dataManager.deleteCategory(id: category.id)
                         isPresented = false

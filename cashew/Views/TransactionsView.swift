@@ -244,7 +244,7 @@ struct TransactionsView: View {
             return "Healthcare"
         }
         
-        return "Other"
+        return ""
     }
 }
 

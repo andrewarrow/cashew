@@ -137,12 +137,9 @@ struct ShareView: View {
             // Write to the file
             try jsonData.write(to: fileURL)
             
-            // Create a shareable text string instead of directly sharing the file
-            let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
-            
-            // Set up the share sheet
-            let items: [Any] = [jsonString]
-            let ac = UIActivityViewController(activityItems: items, applicationActivities: nil)
+            // Share the file URL directly instead of just the text
+            // This preserves the .json extension
+            let ac = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
             
             // Find the current UIWindow to present the share sheet
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,

@@ -2,14 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>cashew</string>
 	<key>CFBundleDisplayName</key>
 	<string>cashew</string>
-	<key>CFBundleExecutable</key>
-	<string>cashew</string>
-	<key>CFBundleIdentifier</key>
-	<string>dev.andrewarrow.cashew</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -23,6 +17,12 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleExecutable</key>
+	<string>cashew</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.andrewarrow.cashew</string>
+	<key>CFBundleName</key>
+	<string>cashew</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>

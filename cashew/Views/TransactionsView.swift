@@ -110,8 +110,8 @@ struct TransactionsView: View {
     }
     
     // Import transactions from text
-    private func importTransactions(_ text: String) -> String? {
-        let result = TransactionTextParser.parse(text)
+    private func importTransactions(_ text: String, defaultYear: Int) -> String? {
+        let result = TransactionTextParser.parse(text, defaultYear: defaultYear)
         guard !result.transactions.isEmpty else {
             return "No valid transactions found. Check the dates, amounts, and descriptions, then try again."
         }
@@ -129,6 +129,9 @@ struct TransactionsView: View {
         alertTitle = "Import Successful"
         let skipped = result.skippedRecordCount
         alertMessage = "Imported \(result.transactions.count) transactions.\(skipped > 0 ? " Skipped \(skipped) invalid record\(skipped == 1 ? "" : "s")." : "")"
+        if result.assumedYearCount > 0 {
+            alertMessage += " Dates without a year use \(defaultYear)."
+        }
         showAlert = true
         return nil
     }
@@ -320,25 +323,31 @@ struct TransactionCategoryPickerView: View {
 struct AddTransactionDataView: View {
     @Binding var isPresented: Bool
     @State private var transactionText = ""
+    @State private var statementYear = String(Calendar(identifier: .gregorian).component(.year, from: Date()))
     @State private var importError: String?
-    var onImport: (String) -> String?
+    var onImport: (String, Int) -> String?
     
     var body: some View {
         NavigationView {
-            VStack {
-                Text("Paste bank activity or one transaction per line in the format:")
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Paste bank activity, statement rows, or CSV/TSV data.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                    .padding(.horizontal)
-                    .multilineTextAlignment(.leading)
-                
-                Text("MM/DD/YYYY -XX.XX Description")
-                    .font(.system(.subheadline, design: .monospaced))
-                
-                Text("Example: 04/24/2025 -16.75 7-eleven")
+
+                HStack {
+                    Text("Statement year")
+                    Spacer()
+                    TextField("Year", text: $statementYear)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                        .accessibilityLabel("Statement year")
+                }
+
+                Text("Used for dates without a year.")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 TextEditor(text: $transactionText)
                     .accessibilityLabel("Transaction data")
                     .padding(8)
@@ -346,20 +355,19 @@ struct AddTransactionDataView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                     )
-                    .padding(.horizontal)
                 
                 if let importError {
                     Text(importError)
                         .font(.footnote)
                         .foregroundColor(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
                 }
-                
-                Spacer()
             }
             .padding()
             .onChange(of: transactionText) { _ in
+                importError = nil
+            }
+            .onChange(of: statementYear) { _ in
                 importError = nil
             }
             .navigationTitle("Add Transaction Data")
@@ -373,7 +381,12 @@ struct AddTransactionDataView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Import") {
-                        if let error = onImport(transactionText) {
+                        guard let year = Int(statementYear.trimmingCharacters(in: .whitespacesAndNewlines)),
+                              (1...9999).contains(year) else {
+                            importError = "Enter a valid statement year, such as 2026."
+                            return
+                        }
+                        if let error = onImport(transactionText, year) {
                             importError = error
                         } else {
                             isPresented = false

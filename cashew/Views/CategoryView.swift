@@ -130,7 +130,7 @@ struct AddCategoryView: View {
     ]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("Category Details")) {
                     TextField("Category Name", text: $categoryName)
@@ -241,7 +241,7 @@ struct EditCategoryView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("Category Details")) {
                     TextField("Category Name", text: $categoryName)

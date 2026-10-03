@@ -31,7 +31,7 @@ struct ContentView: View {
             }
             .tag(0)
 
-            NavigationView {
+            NavigationStack {
                 TransactionsView(showingAddDataModal: $showingAddDataModal)
                     .environmentObject(dataManager)
             }
@@ -41,7 +41,7 @@ struct ContentView: View {
             }
             .tag(1)
             
-            NavigationView {
+            NavigationStack {
                 CategoryView()
                     .environmentObject(dataManager)
             }
@@ -51,7 +51,7 @@ struct ContentView: View {
             }
             .tag(2)
 
-            NavigationView {
+            NavigationStack {
                 ShareView()
                     .environmentObject(dataManager)
             }

@@ -16,12 +16,8 @@ struct ShareView: View {
     @State private var importErrorObserver: NSObjectProtocol?
     
     var body: some View {
-        ZStack {
-            // Background
-            Color(UIColor.systemGroupedBackground)
-                .edgesIgnoringSafeArea(.all)
-            
-            VStack(spacing: 20) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
                 // Error Banner (if needed)
                 if let error = dataManager.error {
                     ErrorBanner(message: error)
@@ -49,8 +45,6 @@ struct ShareView: View {
                     action: { prepareAndExport() }
                 )
                 
-                Spacer()
-                
                 // History button
                 NavigationLink(destination: HistoryView()) {
                     HStack {
@@ -62,13 +56,13 @@ struct ShareView: View {
                     .foregroundColor(.blue)
                     .padding()
                 }
-                
-                // Adding some padding at the bottom
-                Spacer().frame(height: 20)
             }
+            .frame(maxWidth: 600, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(.horizontal, 20)
-            .padding(.top, 20)
+            .padding(.vertical, 20)
         }
+        .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle("Share")
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(

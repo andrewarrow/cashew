@@ -286,7 +286,7 @@ struct TransactionCategoryPickerView: View {
     @Binding var isPresented: Bool
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(dataManager.categories) { category in
                     Button(action: {
@@ -344,7 +344,7 @@ struct AddTransactionDataView: View {
     var onImport: (String, Int) -> String?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Paste bank activity, statement rows, or CSV/TSV data.")
                     .font(.subheadline)

@@ -107,7 +107,7 @@ struct HistoryView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         HistoryView()
             .environmentObject(DataManager())
     }

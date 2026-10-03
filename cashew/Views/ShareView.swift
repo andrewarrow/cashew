@@ -33,7 +33,10 @@ struct ShareView: View {
                     title: "Import",
                     description: "Import transaction data from JSON files",
                     buttonText: "Import",
-                    action: { isImporting = true }
+                    action: { isImporting = true },
+                    secondaryButtonText: dataManager.financeTransactions.isEmpty ? "Load Sample Transactions" : nil,
+                    secondaryButtonCaption: dataManager.financeTransactions.isEmpty ? "Uses fictional example data." : nil,
+                    secondaryButtonAction: dataManager.financeTransactions.isEmpty ? loadSampleTransactions : nil
                 )
                 
                 // Export Card
@@ -161,19 +164,12 @@ struct ShareView: View {
                 
                 do {
                     let data = try Data(contentsOf: selectedFile)
-                    let decoder = JSONDecoder()
-                    decoder.dateDecodingStrategy = .iso8601 // Ensure dates are decoded properly
-                    
-                    // Decode the transactions from the JSON file
-                    let transactions = try decoder.decode([FinanceTransaction].self, from: data)
-                    dataManager.importTransactions(transactions)
-                    
-                    alertTitle = "Import Successful"
-                    alertMessage = "Successfully imported \(transactions.count) transactions"
-                    showAlert = true
+                    importTransactions(from: data) { count in
+                        "Successfully imported \(count) transactions"
+                    }
                 } catch {
                     alertTitle = "Import Error"
-                    alertMessage = "Failed to parse file: \(error.localizedDescription)"
+                    alertMessage = "Failed to read file: \(error.localizedDescription)"
                     showAlert = true
                 }
             } else {
@@ -185,6 +181,43 @@ struct ShareView: View {
         case .failure(let error):
             alertTitle = "Import Error"
             alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
+
+    private func loadSampleTransactions() {
+        guard let sampleURL = Bundle.main.url(forResource: "sample_transactions", withExtension: "json") else {
+            alertTitle = "Sample Data Unavailable"
+            alertMessage = "The bundled sample transactions could not be found."
+            showAlert = true
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: sampleURL)
+            importTransactions(from: data) { count in
+                "Loaded \(count) fictional transactions. Open the Transactions tab to view them."
+            }
+        } catch {
+            alertTitle = "Sample Data Error"
+            alertMessage = "Could not load sample transactions: \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    private func importTransactions(from data: Data, successMessage: (Int) -> String) {
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let transactions = try decoder.decode([FinanceTransaction].self, from: data)
+            dataManager.importTransactions(transactions)
+
+            alertTitle = "Import Successful"
+            alertMessage = successMessage(transactions.count)
+            showAlert = true
+        } catch {
+            alertTitle = "Import Error"
+            alertMessage = "Failed to parse transactions: \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -210,6 +243,9 @@ struct ShareActionCard: View {
     let description: String
     let buttonText: String
     let action: () -> Void
+    var secondaryButtonText: String? = nil
+    var secondaryButtonCaption: String? = nil
+    var secondaryButtonAction: (() -> Void)? = nil
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -247,6 +283,24 @@ struct ShareActionCard: View {
                     .cornerRadius(10)
             }
             .buttonStyle(PlainButtonStyle())
+
+            if let secondaryButtonText = secondaryButtonText,
+               let secondaryButtonCaption = secondaryButtonCaption,
+               let secondaryButtonAction = secondaryButtonAction {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(secondaryButtonCaption)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Button(action: secondaryButtonAction) {
+                        Text(secondaryButtonText)
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .foregroundColor(.blue)
+                }
+            }
         }
         .padding(20)
         .background(

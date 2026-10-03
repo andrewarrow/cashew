@@ -175,45 +175,8 @@ class DataManager: ObservableObject {
                 self.financeTransactions = loadedTransactions
                 self.addDebugMessage("Loaded \(loadedTransactions.count) finance transactions from UserDefaults")
             } else {
-                // If loading fails, initialize with sample data
-                initializeFinanceTransactions()
+                self.addDebugMessage("Could not decode saved finance transactions; leaving saved data untouched")
             }
-        } else {
-            // If no saved data, initialize with sample data
-            initializeFinanceTransactions()
-        }
-    }
-    
-    // Initialize finance transactions with sample data
-    private func initializeFinanceTransactions() {
-        // Only initialize if we don't have transactions yet
-        if self.financeTransactions.isEmpty {
-            // Add a few sample transactions
-            let currentDate = Date()
-            let calendar = Calendar.current
-            
-            for i in 0..<5 {
-                // Create dates going back a few days
-                let daysAgo = i * 2
-                let transactionDate = calendar.date(byAdding: .day, value: -daysAgo, to: currentDate) ?? currentDate
-                
-                // Create a transaction with some sample data (amount in pennies)
-                let amountInDollars = Double.random(in: 10...200)
-                let amountInPennies = Int(amountInDollars * 100)
-                let categories = ["Food", "Shopping", "Transportation", "Entertainment", "Utilities"]
-                let descriptions = ["Grocery store", "Restaurant", "Gas station", "Online purchase", "Coffee shop"]
-                
-                let transaction = FinanceTransaction(
-                    amount: amountInPennies,
-                    description: descriptions[i % descriptions.count],
-                    category: categories[i % categories.count],
-                    date: transactionDate
-                )
-                
-                self.financeTransactions.append(transaction)
-            }
-            self.addDebugMessage("Initialized 5 sample finance transactions")
-            self.saveFinanceTransactions()
         }
     }
     

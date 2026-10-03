@@ -110,56 +110,27 @@ struct TransactionsView: View {
     }
     
     // Import transactions from text
-    private func importTransactions(_ text: String) {
-        let lines = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        var importedCount = 0
-        
-        for line in lines {
-            let components = line.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: " ")
-            if components.count >= 3 {
-                // Extract the date
-                let dateString = components[0]
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "MM/dd/yyyy"
-                
-                // Extract the amount
-                let amountString = components[1].replacingOccurrences(of: ",", with: "")
-                
-                // Extract the description (everything after amount)
-                let descriptionComponents = Array(components[2...])
-                let description = descriptionComponents.joined(separator: " ")
-                
-                if let date = dateFormatter.date(from: dateString),
-                   let amountInDollars = Double(amountString) {
-                    
-                    // Convert dollars to pennies (cents)
-                    let amountInPennies = Int(amountInDollars * 100)
-                    
-                    // Determine the category based on description
-                    let category = determineCategory(from: description)
-                    
-                    // Add the transaction
-                    dataManager.addFinanceTransaction(
-                        amount: amountInPennies,
-                        description: description,
-                        category: category,
-                        date: date
-                    )
-                    
-                    importedCount += 1
-                }
-            }
+    private func importTransactions(_ text: String) -> String? {
+        let result = TransactionTextParser.parse(text)
+        guard !result.transactions.isEmpty else {
+            return "No valid transactions found. Check the dates, amounts, and descriptions, then try again."
         }
-        
-        // Show success or failure alert
-        if importedCount > 0 {
-            alertTitle = "Import Successful"
-            alertMessage = "Imported \(importedCount) transactions."
-        } else {
-            alertTitle = "Import Failed"
-            alertMessage = "No valid transactions found. Please check the format."
+
+        for transaction in result.transactions {
+            let category = determineCategory(from: transaction.description)
+            dataManager.addFinanceTransaction(
+                amount: transaction.amount,
+                description: transaction.description,
+                category: category,
+                date: transaction.date
+            )
         }
+
+        alertTitle = "Import Successful"
+        let skipped = result.skippedRecordCount
+        alertMessage = "Imported \(result.transactions.count) transactions.\(skipped > 0 ? " Skipped \(skipped) invalid record\(skipped == 1 ? "" : "s")." : "")"
         showAlert = true
+        return nil
     }
     
     // Simple logic to determine a category based on the transaction description
@@ -349,29 +320,27 @@ struct TransactionCategoryPickerView: View {
 struct AddTransactionDataView: View {
     @Binding var isPresented: Bool
     @State private var transactionText = ""
-    var onImport: (String) -> Void
+    @State private var importError: String?
+    var onImport: (String) -> String?
     
     var body: some View {
         NavigationView {
             VStack {
-                Text("Paste your transaction data below. Each line should be in the format:")
+                Text("Paste bank activity or one transaction per line in the format:")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.leading)
                 
                 Text("MM/DD/YYYY -XX.XX Description")
                     .font(.system(.subheadline, design: .monospaced))
-                    .padding(.bottom)
                 
-                // Sample text
                 Text("Example: 04/24/2025 -16.75 7-eleven")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .padding(.bottom)
                 
-                // Text area for input
                 TextEditor(text: $transactionText)
+                    .accessibilityLabel("Transaction data")
                     .padding(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
@@ -379,9 +348,20 @@ struct AddTransactionDataView: View {
                     )
                     .padding(.horizontal)
                 
+                if let importError {
+                    Text(importError)
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                }
+                
                 Spacer()
             }
             .padding()
+            .onChange(of: transactionText) { _ in
+                importError = nil
+            }
             .navigationTitle("Add Transaction Data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -393,8 +373,11 @@ struct AddTransactionDataView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Import") {
-                        onImport(transactionText)
-                        isPresented = false
+                        if let error = onImport(transactionText) {
+                            importError = error
+                        } else {
+                            isPresented = false
+                        }
                     }
                     .disabled(transactionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }

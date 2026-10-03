@@ -153,6 +153,10 @@ enum TransactionTextParser {
         let candidateLines = ([record.tail] + record.lines).filter { !trimmed($0).isEmpty }
         for (lineIndex, line) in candidateLines.enumerated() {
             let cells = line.components(separatedBy: "\t").map(trimmed).filter { !$0.isEmpty }
+            if cells.count >= 3, money(cells[0]) == nil,
+               cells.suffix(2).allSatisfy({ isMoneyToken($0) && money($0) != nil }) {
+                hasInlineBalance = true
+            }
             for value in cells {
                 if isMarketingPrompt(value) { continue }
                 if isType(value) {
@@ -225,7 +229,7 @@ enum TransactionTextParser {
             .replacingOccurrences(of: "－", with: "-")
     }
 
-    private static let moneyPattern = #"(?:[+-]\s*\$?|\$\s*[+-]?|)\s*(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?"#
+    private static let moneyPattern = #"(?:[+−–—﹣－-]\s*\$?|\$\s*[+−–—﹣－-]?|)\s*(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?"#
 
     private static func money(_ value: String) -> Money? {
         var normalized = normalizedSigns(trimmed(value))
@@ -255,16 +259,15 @@ enum TransactionTextParser {
     }
 
     private static func leadingAmount(in value: String) -> (amount: String, remainder: String)? {
-        let normalized = normalizedSigns(value)
         let pattern = "^(?:\\(" + moneyPattern + "\\)|" + moneyPattern + #")(?=\s)"#
-        guard let range = normalized.range(of: pattern, options: .regularExpression) else { return nil }
-        let remainder = trimmed(String(normalized[range.upperBound...]))
+        guard let range = value.range(of: pattern, options: .regularExpression) else { return nil }
+        let remainder = trimmed(String(value[range.upperBound...]))
         guard !remainder.isEmpty else { return nil }
-        return (trimmed(String(normalized[range])), remainder)
+        return (trimmed(String(value[range])), remainder)
     }
 
     private static func trailingAmounts(in value: String) -> (description: String, amounts: [String]) {
-        var remainder = normalizedSigns(value)
+        var remainder = value
         var amounts: [String] = []
         let pattern = #"(?:^|\s)(?:\("# + moneyPattern + "\\)|" + moneyPattern + ")$"
         while let range = remainder.range(of: pattern, options: .regularExpression) {

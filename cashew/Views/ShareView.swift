@@ -9,6 +9,7 @@ struct ShareView: View {
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
+    @State private var completedActionForReview = false
     
     // For handling app open with URL
     @State private var importObserver: NSObjectProtocol?
@@ -89,7 +90,12 @@ struct ShareView: View {
             Alert(
                 title: Text(alertTitle),
                 message: Text(alertMessage),
-                dismissButton: .default(Text("OK"))
+                dismissButton: .default(Text("OK")) {
+                    if completedActionForReview {
+                        completedActionForReview = false
+                        dataManager.reviewOpportunities.send()
+                    }
+                }
             )
         }
         .accentColor(.blue)
@@ -103,6 +109,7 @@ struct ShareView: View {
                 if let count = notification.userInfo?["count"] as? Int {
                     alertTitle = "Import Successful"
                     alertMessage = "Successfully imported \(count) transactions"
+                    completedActionForReview = notification.userInfo?["didCompleteAction"] as? Bool ?? false
                     showAlert = true
                 }
             }
@@ -113,6 +120,7 @@ struct ShareView: View {
                 queue: .main
             ) { notification in
                 if let errorMessage = notification.userInfo?["error"] as? String {
+                    completedActionForReview = false
                     alertTitle = "Import Error"
                     alertMessage = "Failed to import file: \(errorMessage)"
                     showAlert = true
@@ -131,6 +139,7 @@ struct ShareView: View {
     }
     
     private func prepareAndExport() {
+        completedActionForReview = false
         // Create JSON from transactions
         do {
             let encoder = JSONEncoder()
@@ -149,6 +158,7 @@ struct ShareView: View {
     }
     
     private func handleImport(result: Result<[URL], Error>) {
+        completedActionForReview = false
         switch result {
         case .success(let urls):
             guard let selectedFile = urls.first else {
@@ -186,6 +196,7 @@ struct ShareView: View {
     }
 
     private func loadSampleTransactions() {
+        completedActionForReview = false
         guard let sampleURL = Bundle.main.url(forResource: "sample_transactions", withExtension: "json") else {
             alertTitle = "Sample Data Unavailable"
             alertMessage = "The bundled sample transactions could not be found."
@@ -206,11 +217,14 @@ struct ShareView: View {
     }
 
     private func importTransactions(from data: Data, successMessage: (Int) -> String) {
+        completedActionForReview = false
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let transactions = try decoder.decode([FinanceTransaction].self, from: data)
+            let completedActionsBeforeImport = dataManager.reviewPromptTracker.completedActionCount
             dataManager.importTransactions(transactions)
+            completedActionForReview = dataManager.reviewPromptTracker.completedActionCount > completedActionsBeforeImport
 
             alertTitle = "Import Successful"
             alertMessage = successMessage(transactions.count)
@@ -223,8 +237,13 @@ struct ShareView: View {
     }
     
     private func handleExport(result: Result<URL, Error>) {
+        completedActionForReview = false
         switch result {
         case .success(let url):
+            if !dataManager.financeTransactions.isEmpty {
+                dataManager.reviewPromptTracker.recordCompletedAction()
+                completedActionForReview = true
+            }
             alertTitle = "Export Successful"
             alertMessage = "Your transactions have been exported to \(url.lastPathComponent)"
             showAlert = true

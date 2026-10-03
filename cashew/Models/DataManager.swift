@@ -3,6 +3,10 @@ import Combine
 import SwiftUI
 
 class DataManager: ObservableObject {
+    let reviewPromptTracker = ReviewPromptTracker()
+    // Views emit an opportunity after their completion alert or editor is dismissed.
+    let reviewOpportunities = PassthroughSubject<Void, Never>()
+
     // Published properties that trigger UI updates
     @Published var financeTransactions: [FinanceTransaction] = []
     @Published var debugMessages: [String] = []
@@ -107,6 +111,7 @@ class DataManager: ObservableObject {
         self.categories.append(newCategory)
         self.saveCategories()
         self.addDebugMessage("Added new category: \(name)")
+        reviewPromptTracker.recordCompletedAction()
     }
     
     // Update an existing category
@@ -125,10 +130,16 @@ class DataManager: ObservableObject {
             if let color = color {
                 updatedCategory.color = color
             }
+
+            let originalCategory = self.categories[index]
+            guard updatedCategory.name != originalCategory.name ||
+                  updatedCategory.icon != originalCategory.icon ||
+                  updatedCategory.color != originalCategory.color else { return }
             
             self.categories[index] = updatedCategory
             self.addDebugMessage("Updated category with ID: \(id.uuidString)")
             self.saveCategories()
+            reviewPromptTracker.recordCompletedAction()
         }
     }
     
@@ -248,6 +259,7 @@ class DataManager: ObservableObject {
         
         // Update transactions on main thread
         self.updateOnMainThread {
+            let previousCount = self.financeTransactions.count
             // Merge transactions, avoiding duplicates by ID
             for transaction in importedTransactions {
                 if !self.financeTransactions.contains(where: { $0.id == transaction.id }) {
@@ -260,6 +272,9 @@ class DataManager: ObservableObject {
             
             // Save to persistent storage
             self.saveFinanceTransactions()
+            if self.financeTransactions.count > previousCount {
+                self.reviewPromptTracker.recordCompletedAction()
+            }
             
             self.addDebugMessage("Imported \(importedTransactions.count) transactions")
         }
@@ -346,10 +361,17 @@ class DataManager: ObservableObject {
             if let date = date {
                 updatedTransaction.date = date
             }
+
+            let originalTransaction = self.financeTransactions[index]
+            guard updatedTransaction.amount != originalTransaction.amount ||
+                  updatedTransaction.description != originalTransaction.description ||
+                  updatedTransaction.category != originalTransaction.category ||
+                  updatedTransaction.date != originalTransaction.date else { return }
             
             self.financeTransactions[index] = updatedTransaction
             self.addDebugMessage("Updated finance transaction with ID: \(id.uuidString)")
             self.saveFinanceTransactions()
+            reviewPromptTracker.recordCompletedAction()
         }
     }
     

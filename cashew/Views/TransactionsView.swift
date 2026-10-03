@@ -79,7 +79,9 @@ struct TransactionsView: View {
             AddTransactionDataView(isPresented: $showingAddDataModal, onImport: importTransactions)
         }
         .alert(isPresented: $showAlert) {
-            Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")) {
+                dataManager.reviewOpportunities.send()
+            })
         }
     }
     
@@ -131,6 +133,8 @@ struct TransactionsView: View {
                 date: transaction.date
             )
         }
+        // A statement import is one action, regardless of how many rows it contains.
+        dataManager.reviewPromptTracker.recordCompletedAction()
 
         alertTitle = "Import Successful"
         let skipped = result.skippedRecordCount
@@ -167,6 +171,7 @@ struct TransactionRow: View {
     @EnvironmentObject var dataManager: DataManager
     let transaction: FinanceTransaction
     @State private var showingCategoryPicker = false
+    @State private var completedActionsBeforeEditing = 0
     
     var body: some View {
         HStack {
@@ -197,6 +202,7 @@ struct TransactionRow: View {
                 
             // Add an edit button
             Button(action: {
+                completedActionsBeforeEditing = dataManager.reviewPromptTracker.completedActionCount
                 showingCategoryPicker = true
             }) {
                 Image(systemName: "pencil")
@@ -206,7 +212,11 @@ struct TransactionRow: View {
             .buttonStyle(BorderlessButtonStyle())
         }
         .padding(.vertical, 8)
-        .sheet(isPresented: $showingCategoryPicker) {
+        .sheet(isPresented: $showingCategoryPicker, onDismiss: {
+            if dataManager.reviewPromptTracker.completedActionCount > completedActionsBeforeEditing {
+                dataManager.reviewOpportunities.send()
+            }
+        }) {
             TransactionCategoryPickerView(transaction: transaction, isPresented: $showingCategoryPicker)
         }
     }

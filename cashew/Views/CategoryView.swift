@@ -7,6 +7,7 @@ struct CategoryView: View {
     @State private var showAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
+    @State private var completedActionsBeforeEditing = 0
     
     var body: some View {
         List {
@@ -14,6 +15,7 @@ struct CategoryView: View {
                 CategoryRow(category: category)
                     .contentShape(Rectangle())
                     .onTapGesture {
+                        completedActionsBeforeEditing = dataManager.reviewPromptTracker.completedActionCount
                         editingCategory = category
                     }
             }
@@ -26,16 +28,17 @@ struct CategoryView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
+                    completedActionsBeforeEditing = dataManager.reviewPromptTracker.completedActionCount
                     showingAddCategorySheet = true
                 } label: {
                     Image(systemName: "plus")
                 }
             }
         }
-        .sheet(isPresented: $showingAddCategorySheet) {
+        .sheet(isPresented: $showingAddCategorySheet, onDismiss: offerReviewAfterEditing) {
             AddCategoryView(isPresented: $showingAddCategorySheet)
         }
-        .sheet(item: $editingCategory) { category in
+        .sheet(item: $editingCategory, onDismiss: offerReviewAfterEditing) { category in
             EditCategoryView(isPresented: Binding<Bool>(
                 get: { editingCategory != nil },
                 set: { if !$0 { editingCategory = nil } }
@@ -45,6 +48,12 @@ struct CategoryView: View {
             Alert(title: Text(alertTitle), 
                   message: Text(alertMessage), 
                   dismissButton: .default(Text("OK")))
+        }
+    }
+
+    private func offerReviewAfterEditing() {
+        if dataManager.reviewPromptTracker.completedActionCount > completedActionsBeforeEditing {
+            dataManager.reviewOpportunities.send()
         }
     }
     

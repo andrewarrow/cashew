@@ -32,13 +32,17 @@ struct cashewApp: App {
             let transactions = try decoder.decode([FinanceTransaction].self, from: data)
             
             // Import the transactions
+            let completedActionsBeforeImport = dataManager.reviewPromptTracker.completedActionCount
             dataManager.importTransactions(transactions)
             
             // Show confirmation alert via NotificationCenter
             NotificationCenter.default.post(
                 name: NSNotification.Name("ShowImportAlert"),
                 object: nil,
-                userInfo: ["count": transactions.count]
+                userInfo: [
+                    "count": transactions.count,
+                    "didCompleteAction": dataManager.reviewPromptTracker.completedActionCount > completedActionsBeforeImport
+                ]
             )
         } catch {
             print("Failed to import file: \(error)")

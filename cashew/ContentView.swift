@@ -9,17 +9,32 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
+    @State private var selectedTab = 0
+    @State private var showingAddDataModal = false
     
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                HomeView {
+                    selectedTab = 1
+                    showingAddDataModal = true
+                }
+            }
+            .tabItem {
+                Image(systemName: "house")
+                Text("Home")
+            }
+            .tag(0)
+
             NavigationView {
-                TransactionsView()
+                TransactionsView(showingAddDataModal: $showingAddDataModal)
                     .environmentObject(dataManager)
             }
             .tabItem {
                 Image(systemName: "dollarsign.circle")
                 Text("Transactions")
             }
+            .tag(1)
             
             NavigationView {
                 CategoryView()
@@ -29,6 +44,7 @@ struct ContentView: View {
                 Image(systemName: "tag.fill")
                 Text("Categories")
             }
+            .tag(2)
 
             NavigationView {
                 ShareView()
@@ -38,6 +54,7 @@ struct ContentView: View {
                 Image(systemName: "square.and.arrow.up.on.square")
                 Text("Share")
             }
+            .tag(3)
         }
     }
 }

@@ -2,9 +2,10 @@ import SwiftUI
 
 struct TransactionsView: View {
     @EnvironmentObject var dataManager: DataManager
-    @State private var showingAddDataModal = false
+    @Binding var showingAddDataModal: Bool
     @State private var transactionText = ""
     @State private var showAlert = false
+    @State private var pendingImportSuccess = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     
@@ -69,7 +70,12 @@ struct TransactionsView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingAddDataModal) {
+        .sheet(isPresented: $showingAddDataModal, onDismiss: {
+            if pendingImportSuccess {
+                pendingImportSuccess = false
+                showAlert = true
+            }
+        }) {
             AddTransactionDataView(isPresented: $showingAddDataModal, onImport: importTransactions)
         }
         .alert(isPresented: $showAlert) {
@@ -132,7 +138,7 @@ struct TransactionsView: View {
         if result.assumedYearCount > 0 {
             alertMessage += " Dates without a year use \(defaultYear)."
         }
-        showAlert = true
+        pendingImportSuccess = true
         return nil
     }
     
@@ -400,6 +406,7 @@ struct AddTransactionDataView: View {
 }
 
 #Preview {
-    TransactionsView()
+    @Previewable @State var showingAddDataModal = false
+    TransactionsView(showingAddDataModal: $showingAddDataModal)
         .environmentObject(DataManager())
 }

@@ -13,15 +13,6 @@ struct ContentView: View {
     var body: some View {
         TabView {
             NavigationView {
-                ShareView()
-                    .environmentObject(dataManager)
-            }
-            .tabItem {
-                Image(systemName: "square.and.arrow.up.on.square")
-                Text("Share")
-            }
-            
-            NavigationView {
                 TransactionsView()
                     .environmentObject(dataManager)
             }
@@ -37,6 +28,15 @@ struct ContentView: View {
             .tabItem {
                 Image(systemName: "tag.fill")
                 Text("Categories")
+            }
+
+            NavigationView {
+                ShareView()
+                    .environmentObject(dataManager)
+            }
+            .tabItem {
+                Image(systemName: "square.and.arrow.up.on.square")
+                Text("Share")
             }
         }
     }
